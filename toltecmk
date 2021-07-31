@@ -10,6 +10,7 @@ import sys
 from typing import Dict, List, Optional
 from toltec.builder import Builder
 from toltec.recipe import GenericRecipe, Package
+from toltec.repo import make_index
 from toltec.util import argparse_add_verbose, LOGGING_FORMAT
 
 parser = argparse.ArgumentParser(description=__doc__)
@@ -83,3 +84,5 @@ if args.arch_name or args.package_name:
 
 if not builder.make(generic_recipe, build_matrix):
     sys.exit(1)
+
+make_index(args.dist_dir)

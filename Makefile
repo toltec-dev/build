@@ -15,10 +15,10 @@ help:
 	@echo "$$USAGE"
 
 format:
-	black --line-length 80 --check --diff scripts
+	black --line-length 80 --check --diff toltec toltecmk
 
 format-fix:
-	black --line-length 80 scripts
+	black --line-length 80 toltec toltecmk
 
 lint:
 	@echo "==> Typechecking files"

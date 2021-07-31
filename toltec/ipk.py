@@ -151,3 +151,22 @@ def make_ipk(
         _add_file(archive, "data.tar.gz", 0o644, epoch, data.getvalue())
 
         _add_file(archive, "debian-binary", 0o644, epoch, b"2.0\n")
+
+
+def read_ipk_metadata(file: IO[bytes]) -> str:
+    """
+    Read the metadata of an ipk package.
+
+    :param file: package file from which to read metadata
+    :returns: metadata document
+    """
+    with tarfile.TarFile.open(fileobj=file, mode="r:gz") as root_archive:
+        control_file = root_archive.extractfile("./control.tar.gz")
+        assert control_file is not None
+
+        with tarfile.TarFile.open(
+            fileobj=control_file, mode="r:gz"
+        ) as control_archive:
+            metadata_file = control_archive.extractfile("./control")
+            assert metadata_file is not None
+            return metadata_file.read().decode("utf-8")
