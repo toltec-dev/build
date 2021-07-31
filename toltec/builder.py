@@ -64,7 +64,7 @@ class Builder:  # pylint: disable=too-few-public-methods
     IMAGE_PREFIX = "ghcr.io/toltec-dev/"
 
     # Toltec Docker image used for generic tasks
-    DEFAULT_IMAGE = "toolchain:v1.3.1"
+    DEFAULT_IMAGE = "toolchain:v2.1"
 
     def __init__(self, work_dir: str, repo_dir: str) -> None:
         """
