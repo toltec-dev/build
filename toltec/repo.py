@@ -7,14 +7,14 @@ Build the package repository.
 from datetime import datetime
 import gzip
 from enum import Enum, auto
+from graphlib import TopologicalSorter
 import logging
 import os
 import textwrap
 from typing import Dict, Iterable, List, Optional, Set
 import requests
-from .graphlib import TopologicalSorter
 from .recipe import GenericRecipe, Package
-from .util import file_sha256, group_by, HTTP_DATE_FORMAT
+from .util import file_sha256, HTTP_DATE_FORMAT
 from .version import DependencyKind
 
 logger = logging.getLogger(__name__)
@@ -24,13 +24,13 @@ class PackageStatus(Enum):
     """Possible existence statuses of a built package."""
 
     # The package already existed in the local filesystem before the build
-    AlreadyExists = auto()
+    ALREADY_EXISTS = auto()
 
     # The package was fetched from a remote repository
-    Fetched = auto()
+    FETCHED = auto()
 
     # The package is missing both from the local filesystem and the remote repo
-    Missing = auto()
+    MISSING = auto()
 
 
 GroupedPackages = Dict[PackageStatus, Dict[str, Dict[str, List[Package]]]]
@@ -70,8 +70,8 @@ class Repo:
         """
         logger.info("Scanning for missing packages")
         results: GroupedPackages = {
-            PackageStatus.Fetched: {},
-            PackageStatus.Missing: {},
+            PackageStatus.FETCHED: {},
+            PackageStatus.MISSING: {},
         }
 
         for name, generic_recipe in self.generic_recipes.items():
@@ -85,9 +85,9 @@ class Repo:
                 for package in recipe.packages.values():
                     status = self.fetch_package(package, remote)
 
-                    if status == PackageStatus.Fetched:
+                    if status == PackageStatus.FETCHED:
                         fetched_arch.append(package)
-                    elif status == PackageStatus.Missing:
+                    elif status == PackageStatus.MISSING:
                         logger.info(
                             "Package %s (%s) is missing",
                             package.pkgid(),
@@ -102,10 +102,10 @@ class Repo:
                     missing_generic[arch] = missing_arch
 
             if fetched_generic:
-                results[PackageStatus.Fetched][name] = fetched_generic
+                results[PackageStatus.FETCHED][name] = fetched_generic
 
             if missing_generic:
-                results[PackageStatus.Missing][name] = missing_generic
+                results[PackageStatus.MISSING][name] = missing_generic
 
         return results
 
@@ -124,17 +124,17 @@ class Repo:
         local_path = os.path.join(self.repo_dir, filename)
 
         if os.path.isfile(local_path):
-            return PackageStatus.AlreadyExists
+            return PackageStatus.ALREADY_EXISTS
 
         if remote is None:
-            return PackageStatus.Missing
+            return PackageStatus.MISSING
 
         remote_path = os.path.join(remote, filename)
 
         req = requests.get(remote_path)
 
         if req.status_code != 200:
-            return PackageStatus.Missing
+            return PackageStatus.MISSING
 
         os.makedirs(os.path.dirname(local_path), exist_ok=True)
 
@@ -150,7 +150,7 @@ class Repo:
         )
 
         os.utime(local_path, (last_modified, last_modified))
-        return PackageStatus.Fetched
+        return PackageStatus.FETCHED
 
     def order_dependencies(
         self,
@@ -181,7 +181,7 @@ class Repo:
             for recipe in generic_recipe.recipes.values():
                 for dep in recipe.makedepends:
                     if (
-                        dep.kind == DependencyKind.Host
+                        dep.kind == DependencyKind.HOST
                         and dep.package in parent_recipes
                     ):
                         deps.append(parent_recipes[dep.package])

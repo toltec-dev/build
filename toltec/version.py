@@ -16,11 +16,11 @@ _COMPARATOR_CHARS = re.compile("[<>=]")
 class VersionComparator(Enum):
     """Operators used to compare two version numbers."""
 
-    LowerThan = "<<"
-    LowerThanOrEqual = "<="
-    Equal = "="
-    GreaterThanOrEqual = ">="
-    GreaterThan = ">>"
+    LOWER_THAN = "<<"
+    LOWER_THAN_OR_EQUAL = "<="
+    EQUAL = "="
+    GREATER_THAN_OR_EQUAL = ">="
+    GREATER_THAN = ">>"
 
 
 class InvalidVersionError(Exception):
@@ -102,10 +102,10 @@ class DependencyKind(Enum):
 
     # Dependency installed in the system used to build a package
     # (e.g., a Debian package)
-    Build = "build"
+    BUILD = "build"
     # Dependency installed alongside a package
     # (e.g., another Entware or Toltec package)
-    Host = "host"
+    HOST = "host"
 
 
 class InvalidDependencyError(Exception):
@@ -131,7 +131,7 @@ class Dependency:
         self,
         kind: DependencyKind,
         package: str,
-        version_comparator: VersionComparator = VersionComparator.Equal,
+        version_comparator: VersionComparator = VersionComparator.EQUAL,
         version: Optional[Version] = None,
     ):
         self.kind = kind
@@ -148,7 +148,7 @@ class Dependency:
         colon = dependency.find(":")
 
         if colon == -1:
-            kind = DependencyKind.Host
+            kind = DependencyKind.HOST
         else:
             for enum_kind in DependencyKind:
                 if enum_kind.value == dependency[:colon]:
@@ -165,7 +165,7 @@ class Dependency:
 
         if comp_char_match is None:
             package = dependency
-            version_comparator = VersionComparator.Equal
+            version_comparator = VersionComparator.EQUAL
             version = None
         else:
             comp_char = comp_char_match.start()
@@ -205,7 +205,7 @@ class Dependency:
             # Use the original parsed dependency specification
             return self._original
 
-        kind = "build:" if self.kind == DependencyKind.Build else "host:"
+        kind = "build:" if self.kind == DependencyKind.BUILD else "host:"
 
         if self.version is None:
             return f"{kind}{self.package}"

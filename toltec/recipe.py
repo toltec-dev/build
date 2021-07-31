@@ -10,9 +10,8 @@ packages (in the latter case, it is called a split package).
 
 from dataclasses import dataclass
 from datetime import datetime
-from enum import auto, Flag
 from itertools import product
-from typing import Dict, NamedTuple, Optional, Set
+from typing import Dict, List, NamedTuple, Optional, Set
 import os
 import textwrap
 import dateutil.parser
@@ -138,18 +137,6 @@ class Source(NamedTuple):
     noextract: bool
 
 
-class BuildFlags(Flag):
-    """Flags that guard special behaviors of the build system."""
-
-    NONE = auto()
-
-    # Disable the automatic stripping of generated binaries
-    NOSTRIP = auto()
-
-    # Patch all generated binaries with the rm2fb client shim
-    PATCH_RM2FB = auto()
-
-
 @dataclass
 class Recipe:  # pylint:disable=too-many-instance-attributes
     """Recipe specialized for a target architecture."""
@@ -165,7 +152,7 @@ class Recipe:  # pylint:disable=too-many-instance-attributes
     maintainer: str
     image: str
     arch: str
-    flags: BuildFlags
+    flags: List[str]
 
     functions: bash.Functions
     custom_functions: bash.Functions
@@ -205,11 +192,7 @@ class Recipe:  # pylint:disable=too-many-instance-attributes
         """Parse and check standard fields."""
         flags = _pop_field_indexed(variables, "flags", [])
         self.variables["flags"] = flags
-        self.flags = BuildFlags.NONE
-
-        for flag in flags:
-            assert flag is not None
-            self.flags |= getattr(BuildFlags, flag.upper())
+        self.flags = [flag or "" for flag in flags]
 
         timestamp_str = _pop_field_string(variables, "timestamp")
         self.variables["timestamp"] = timestamp_str
@@ -399,21 +382,13 @@ class Package:  # pylint:disable=too-many-instance-attributes
                 assert dep_raw is not None
                 dep = Dependency.parse(dep_raw)
 
-                if dep.kind != DependencyKind.Host:
+                if dep.kind != DependencyKind.HOST:
                     raise RecipeError(
                         f"Only host packages are supported in the \
 '{field}' field"
                     )
 
                 getattr(self, field).add(dep)
-
-        if self.parent.flags & BuildFlags.PATCH_RM2FB:
-            self.installdepends.add(
-                Dependency(
-                    DependencyKind.Host,
-                    "rm2fb-client",
-                )
-            )
 
     def _load_functions(self, functions: bash.Functions) -> None:
         """Parse and check standard functions."""

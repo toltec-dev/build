@@ -334,36 +334,35 @@ def run_script(variables: Variables, script: str) -> LogGenerator:
     :returns: generator yielding output lines from the script
     :raises ScriptError: if the script exits with a non-zero code
     """
-    process = subprocess.Popen(
+    with subprocess.Popen(
         ["/usr/bin/env", "bash"],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
-    )
+    ) as process:
+        assert process.stdin is not None
+        assert process.stdout is not None
+        process.stdin.write(
+            "\n".join(
+                (
+                    "set -euo pipefail",
+                    put_variables(variables),
+                    "script() {",
+                    script,
+                    "}",
+                    "script",
+                )
+            ).encode()
+        )
+        process.stdin.close()
 
-    assert process.stdin is not None
-    assert process.stdout is not None
-    process.stdin.write(
-        "\n".join(
-            (
-                "set -euo pipefail",
-                put_variables(variables),
-                "script() {",
-                script,
-                "}",
-                "script",
-            )
-        ).encode()
-    )
-    process.stdin.close()
+        while process.poll() is None:
+            line = process.stdout.readline()
+            if line:
+                yield line.decode().strip()
 
-    while process.poll() is None:
-        line = process.stdout.readline()
-        if line:
-            yield line.decode().strip()
-
-    if process.returncode != 0:
-        raise ScriptError(f"Script exited with code {process.returncode}")
+        if process.returncode != 0:
+            raise ScriptError(f"Script exited with code {process.returncode}")
 
 
 def run_script_in_container(

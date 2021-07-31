@@ -22,6 +22,7 @@ def _targz_open(fileobj: IO[bytes], epoch: int) -> tarfile.TarFile:
     )
 
     try:
+        # pylint:disable=consider-using-with
         archive = tarfile.TarFile(
             mode="w",
             fileobj=gzipobj,  # type:ignore

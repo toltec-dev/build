@@ -10,21 +10,18 @@ from typing import (
     List,
     Mapping,
     MutableMapping,
-    NamedTuple,
     Optional,
     Tuple,
 )
 from collections import deque
 import re
 import os
-import shlex
 import logging
 import textwrap
 import docker
-from elftools.elf.elffile import ELFFile, ELFError
 import requests
 from . import bash, util, ipk
-from .recipe import GenericRecipe, Recipe, Package, BuildFlags
+from .recipe import GenericRecipe, Recipe, Package
 from .version import DependencyKind
 
 logger = logging.getLogger(__name__)
@@ -32,14 +29,6 @@ logger = logging.getLogger(__name__)
 
 class BuildError(Exception):
     """Raised when a build step fails."""
-
-
-class PostprocessingCandidates(NamedTuple):
-    """List of binaries on which post-processing needs to be done."""
-
-    strip_arm: List[str]
-    strip_x86: List[str]
-    patch_rm2fb: List[str]
 
 
 class BuildContextAdapter(logging.LoggerAdapter):
@@ -157,7 +146,6 @@ recipe '{generic_recipe.name}' already exists.\nWould you like to [c]ancel, \
         os.makedirs(base_pkg_dir, exist_ok=True)
 
         self._build(recipe, src_dir)
-        self._postprocessing(recipe, src_dir)
 
         for package in (
             packages if packages is not None else recipe.packages.values()
@@ -267,9 +255,9 @@ source file '{source.url}', got {req.status_code}"
         host_deps = []
 
         for dep in recipe.makedepends:
-            if dep.kind == DependencyKind.Build:
+            if dep.kind == DependencyKind.BUILD:
                 build_deps.append(dep.package)
-            elif dep.kind == DependencyKind.Host:
+            elif dep.kind == DependencyKind.HOST:
                 host_deps.append(dep.package)
 
         if build_deps:
@@ -346,164 +334,6 @@ source file '{source.url}', got {req.status_code}"
         )
 
         self._print_logs(logs, "build()")
-
-    def _postprocessing(self, recipe: Recipe, src_dir: str) -> None:
-        """Perform binary post-processing tasks such as stripping."""
-        if (
-            recipe.flags & BuildFlags.NOSTRIP
-            and not recipe.flags & BuildFlags.PATCH_RM2FB
-        ):
-            self.adapter.debug("Skipping post-processing (nothing to do)")
-            return
-
-        self.adapter.info("Post-processing binaries")
-
-        # Search for candidates
-        cand = self._postprocessing_candidates(src_dir)
-
-        # Save original mtimes to restore them afterwards
-        # This will prevent any Makefile rules to be triggered again
-        # in packaging scripts that use `make install`
-        original_mtime = {}
-
-        for file_path in (file for file_list in cand for file in file_list):
-            original_mtime[file_path] = os.stat(file_path).st_mtime_ns
-
-        script = []
-        mount_src = "/src"
-
-        docker_file_path = lambda file_path: shlex.quote(
-            os.path.join(mount_src, os.path.relpath(file_path, src_dir))
-        )
-
-        # Strip debugging symbols and unneeded sections
-        if not recipe.flags & BuildFlags.NOSTRIP:
-            if cand.strip_x86:
-                script.append(
-                    "strip --strip-all -- "
-                    + " ".join(
-                        docker_file_path(file_path)
-                        for file_path in cand.strip_x86
-                    )
-                )
-
-                self.adapter.debug("x86 binaries to be stripped:")
-
-                for file_path in cand.strip_x86:
-                    self.adapter.debug(
-                        " - %s",
-                        os.path.relpath(file_path, src_dir),
-                    )
-
-            if cand.strip_arm:
-                script.append(
-                    '"${CROSS_COMPILE}strip" --strip-all -- '
-                    + " ".join(
-                        docker_file_path(file_path)
-                        for file_path in cand.strip_arm
-                    )
-                )
-
-                self.adapter.debug("ARM binaries to be stripped:")
-
-                for file_path in cand.strip_arm:
-                    self.adapter.debug(
-                        " - %s",
-                        os.path.relpath(file_path, src_dir),
-                    )
-
-        # Add a dynamic dependency on the rm2fb client shim
-        if recipe.flags & BuildFlags.PATCH_RM2FB and cand.patch_rm2fb:
-            script = (
-                [
-                    "export DEBIAN_FRONTEND=noninteractive",
-                    "apt-get update -qq",
-                    "apt-get install -qq --no-install-recommends patchelf",
-                ]
-                + script
-                + [
-                    "patchelf --add-needed librm2fb_client.so.1 "
-                    + " ".join(
-                        docker_file_path(file_path)
-                        for file_path in cand.patch_rm2fb
-                    )
-                ]
-            )
-
-            self.adapter.debug("Binaries to be patched with rm2fb client:")
-
-            for file_path in cand.patch_rm2fb:
-                self.adapter.debug(
-                    " - %s",
-                    os.path.relpath(file_path, src_dir),
-                )
-
-        if script:
-            logs = bash.run_script_in_container(
-                self.docker,
-                image=self.IMAGE_PREFIX + self.DEFAULT_IMAGE,
-                mounts=[
-                    docker.types.Mount(
-                        type="bind",
-                        source=os.path.abspath(src_dir),
-                        target=mount_src,
-                    )
-                ],
-                variables={},
-                script="\n".join(script),
-            )
-
-            self._print_logs(logs)
-
-        # Restore original mtimes
-        for file_path, mtime in original_mtime.items():
-            os.utime(file_path, ns=(mtime, mtime))
-
-    @staticmethod
-    def _postprocessing_candidates(src_dir: str) -> PostprocessingCandidates:
-        """Search for binaries that need to be post-processed."""
-        strip_arm = []
-        strip_x86 = []
-        patch_rm2fb = []
-
-        for directory, _, files in os.walk(src_dir):
-            for file_name in files:
-                file_path = os.path.join(directory, file_name)
-
-                try:
-                    with open(file_path, "rb") as file:
-                        info = ELFFile(file)
-                        symtab = info.get_section_by_name(".symtab")
-
-                        if info.get_machine_arch() == "ARM":
-                            if symtab:
-                                strip_arm.append(file_path)
-
-                            dynamic = info.get_section_by_name(".dynamic")
-                            rodata = info.get_section_by_name(".rodata")
-
-                            if (
-                                dynamic
-                                and rodata
-                                and rodata.data().find(b"/dev/fb0") != -1
-                            ):
-                                patch_rm2fb.append(file_path)
-                        elif (
-                            info.get_machine_arch() in ("x86", "x64") and symtab
-                        ):
-                            strip_x86.append(file_path)
-                except ELFError:
-                    # Ignore non-ELF files
-                    pass
-                except IsADirectoryError:
-                    # Ignore directories
-                    pass
-
-        return PostprocessingCandidates(
-            strip_arm=strip_arm,
-            strip_x86=strip_x86,
-            patch_rm2fb=patch_rm2fb,
-        )
 
     def _package(self, package: Package, src_dir: str, pkg_dir: str) -> None:
         """Make a package from a recipe’s build artifacts."""
