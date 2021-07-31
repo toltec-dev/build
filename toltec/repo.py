@@ -16,7 +16,6 @@ from .graphlib import TopologicalSorter
 from .recipe import GenericRecipe, Package
 from .util import file_sha256, group_by, HTTP_DATE_FORMAT
 from .version import DependencyKind
-from . import templating
 
 logger = logging.getLogger(__name__)
 
@@ -235,28 +234,3 @@ class Repo:
 
                             index_file.write(control)
                             index_gzip_file.write(control)
-
-    def make_listing(self) -> None:
-        """Generate the static web listing for packages in the repo."""
-        logger.info("Generating web listing")
-
-        packages = [
-            package
-            for generic_recipe in self.generic_recipes.values()
-            for recipe in generic_recipe.recipes.values()
-            for package in recipe.packages.values()
-        ]
-
-        # Group packages by section and then by shared package name
-        sections = {
-            section: group_by(section_packages, lambda package: package.name)
-            for section, section_packages in group_by(
-                packages, lambda package: package.section
-            ).items()
-        }
-
-        listing_path = os.path.join(self.repo_dir, "index.html")
-        template = templating.env.get_template("listing.html")
-
-        with open(listing_path, "w") as listing_file:
-            listing_file.write(template.render(sections=sections))
