@@ -23,7 +23,7 @@ import textwrap
 import docker
 from elftools.elf.elffile import ELFFile, ELFError
 import requests
-from . import bash, util, ipk, paths
+from . import bash, util, ipk
 from .recipe import GenericRecipe, Recipe, Package, BuildFlags
 from .version import DependencyKind
 
@@ -90,16 +90,8 @@ class Builder:  # pylint: disable=too-few-public-methods
         self.repo_dir = repo_dir
         os.makedirs(repo_dir, exist_ok=True)
 
-        self.install_lib = ""
-        install_lib_path = os.path.join(paths.SCRIPTS_DIR, "install-lib")
-
         self.context: Dict[str, str] = {}
         self.adapter = BuildContextAdapter(logger, self.context)
-
-        with open(install_lib_path, "r") as file:
-            for line in file:
-                if not line.strip().startswith("#"):
-                    self.install_lib += line
 
         try:
             self.docker = docker.from_env()
@@ -125,13 +117,12 @@ permissions."
         :returns: true if all the requested packages were built correctly
         """
         self.context["recipe"] = generic_recipe.name
-        build_dir = os.path.join(self.work_dir, generic_recipe.name)
 
         if not util.check_directory(
-            build_dir,
-            f"The build directory '{os.path.relpath(build_dir)}' for recipe \
-'{generic_recipe.name}' already exists.\nWould you like to [c]ancel, [r]emove \
-that directory, or [k]eep it (not recommended)?",
+            self.work_dir,
+            f"The build directory '{os.path.relpath(self.work_dir)}' for \
+recipe '{generic_recipe.name}' already exists.\nWould you like to [c]ancel, \
+[r]emove that directory, or [k]eep it (not recommended)?",
         ):
             return False
 
@@ -142,7 +133,7 @@ that directory, or [k]eep it (not recommended)?",
         ):
             if not self._make_arch(
                 generic_recipe.recipes[name],
-                os.path.join(build_dir, name),
+                os.path.join(self.work_dir, name),
                 arch_packages[name] if arch_packages is not None else None,
             ):
                 return False
@@ -541,16 +532,9 @@ source file '{source.url}', got {req.status_code}"
     def _archive(self, package: Package, pkg_dir: str) -> None:
         """Create an archive for a package."""
         self.adapter.info("Creating archive")
-        ar_path = os.path.join(paths.REPO_DIR, package.filename())
+        ar_path = os.path.join(self.repo_dir, package.filename())
         ar_dir = os.path.dirname(ar_path)
         os.makedirs(ar_dir, exist_ok=True)
-
-        # Inject Oxide-specific hook for reloading apps
-        if os.path.exists(os.path.join(pkg_dir, "opt/usr/share/applications")):
-            oxide_hook = "\nreload-oxide-apps\n"
-            package.functions["configure"] += oxide_hook
-            package.functions["postupgrade"] += oxide_hook
-            package.functions["postremove"] += oxide_hook
 
         # Convert install scripts to Debian format
         scripts = {}
@@ -569,7 +553,6 @@ source file '{source.url}', got {req.status_code}"
                     }
                 ),
                 bash.put_functions(package.custom_functions),
-                self.install_lib,
             )
         )
 
