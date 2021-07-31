@@ -22,9 +22,9 @@ format-fix:
 
 lint:
 	@echo "==> Typechecking files"
-	MYPYPATH=scripts mypy --disallow-untyped-defs .
+	mypy --disallow-untyped-defs toltec toltecmk
 	@echo "==> Linting files"
-	PYTHONPATH=: pylint toltec toltecmk
+	pylint toltec toltecmk
 
 .PHONY: \
     help \
