@@ -1,2 +1,7 @@
+*.bin
+*.build
+*.dist
+*.egg-info
+.venv
+__pycache__
 dist
-toltec.egg-info

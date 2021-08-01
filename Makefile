@@ -2,6 +2,10 @@
 # SPDX-License-Identifier: MIT
 
 define USAGE
+Development:
+
+    clean           Remove build artifacts.
+
 Testing:
 
     test            Run tests.
@@ -9,7 +13,7 @@ Testing:
 Building:
 
     build           Build the Python package.
-    clean           Remove build artifacts.
+    standalone      Build the standalone toltecmk executable.
 
 Formatting:
 
@@ -29,25 +33,45 @@ export USAGE
 help:
 	@echo "$$USAGE"
 
-build:
-	python -m build
+.venv/bin/activate:
+	@echo "Setting up development virtual env in .venv"
+	python -m venv .venv; \
+	source .venv/bin/activate; \
+	python -m pip install -r requirements.txt
 
 clean:
-	rm -rf toltec.egg-info dist
+	git clean --force -dX
 
-test:
+build: .venv/bin/activate
+	source .venv/bin/activate; \
+	python -m build
+
+standalone: .venv/bin/activate
+	source .venv/bin/activate; \
+	python -m nuitka \
+	    --follow-imports --enable-plugin=anti-bloat \
+	    --enable-plugin=pylint-warnings \
+	    --onefile --linux-onefile-icon=media/overview.svg \
+	    --assume-yes-for-downloads \
+	    toltec
+
+test: .venv/bin/activate
+	source .venv/bin/activate; \
 	python -m unittest
 
-format:
+format: .venv/bin/activate
+	source .venv/bin/activate; \
 	black --line-length 80 --check --diff toltec tests
 
-format-fix:
+format-fix: .venv/bin/activate
+	source .venv/bin/activate; \
 	black --line-length 80 toltec tests
 
-lint:
-	@echo "==> Typechecking files"
-	mypy --disallow-untyped-defs toltec
-	@echo "==> Linting files"
+lint: .venv/bin/activate
+	source .venv/bin/activate; \
+	echo "==> Typechecking files"; \
+	mypy --disallow-untyped-defs toltec; \
+	echo "==> Linting files"; \
 	pylint toltec
 
 links:
@@ -59,6 +83,7 @@ links:
 .PHONY: \
     help \
     build \
+    standalone \
     clean \
     test \
     format \
