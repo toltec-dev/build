@@ -147,7 +147,7 @@ declare -p
             assert next_token == "("
             assert lexer.get_token() == ")"
             start, end = _parse_func(lexer)
-            functions[token] = declarations[start:end]
+            functions[token] = declarations[start:end].strip(" ")
 
     return variables, functions
 

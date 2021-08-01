@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# Copyright (c) 2021 The Toltec Contributors
+# SPDX-License-Identifier: MIT
+
+pkgnames=(test-archs-part1 test-archs-part2)
+pkgdesc="Dummy package for testing the arch separation feature"
+url=https://example.org/test-archs
+url_rm2=https://example.org/test-archs-rm2
+archs=(rm1 rm2)
+pkgver_rm1=0.0.0-1
+pkgver_rm2=0.0.0-2
+timestamp=2020-08-20T12:28Z
+section="math"
+section_rm2="math-rm2"
+maintainer="Mattéo Delabre <spam@delab.re>"
+maintainer_rm2="None <none@example.com>"
+license=GPL-3.0-or-later
+license_rm2=MIT
+depends=("some-$arch-package")
+depends_rm2=(rm2-only-dep)
+
+image=qt:v1.1
+image_rm2=qt:v1.3
+
+build() {
+    echo "Building for $arch"
+}
+
+_configure() {
+    echo "This package was built for $arch"
+}
+
+test-archs-part1() {
+    pkgdesc="${archs[*]} $pkgname - test arch separation"
+
+    package() {
+        return
+    }
+
+    configure() {
+        echo "This is $pkgname"
+        _configure
+    }
+}
+
+test-archs-part2() {
+    pkgdesc="${archs[*]} $pkgname - test arch separation"
+
+    package() {
+        return
+    }
+
+    configure() {
+        echo "This is $pkgname"
+        _configure
+    }
+}

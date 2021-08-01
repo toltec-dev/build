@@ -96,6 +96,16 @@ class Version:
         return f"Version(upstream={repr(self.upstream)}, \
 revision={repr(self.revision)}, epoch={repr(self.epoch)})"
 
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Version):
+            return (
+                self.epoch == other.epoch
+                and self.upstream == other.upstream
+                and self.revision == other.revision
+            )
+
+        return False
+
 
 class DependencyKind(Enum):
     """Kinds of dependencies that may be requested by a package."""

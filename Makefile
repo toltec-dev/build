@@ -2,6 +2,9 @@
 # SPDX-License-Identifier: MIT
 
 define USAGE
+Available commands:
+
+    test            Run unit tests.
     format          Check that the source code formatting follows
                     the style guide.
     format-fix      Automatically reformat the source code to follow
@@ -14,11 +17,14 @@ export USAGE
 help:
 	@echo "$$USAGE"
 
+test:
+	python -m unittest
+
 format:
-	black --line-length 80 --check --diff toltec toltecmk
+	black --line-length 80 --check --diff toltec tests toltecmk
 
 format-fix:
-	black --line-length 80 toltec toltecmk
+	black --line-length 80 toltec tests toltecmk
 
 lint:
 	@echo "==> Typechecking files"
@@ -28,6 +34,7 @@ lint:
 
 .PHONY: \
     help \
+    test \
     format \
     format-fix \
     lint

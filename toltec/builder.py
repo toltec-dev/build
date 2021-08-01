@@ -21,7 +21,7 @@ import textwrap
 import docker
 import requests
 from . import bash, util, ipk
-from .recipe import GenericRecipe, Recipe, Package
+from .recipe import RecipeBundle, Recipe, Package
 from .version import DependencyKind
 
 logger = logging.getLogger(__name__)
@@ -39,14 +39,11 @@ class BuildContextAdapter(logging.LoggerAdapter):
     ) -> Tuple[str, MutableMapping[str, Any]]:
         prefix = ""
 
-        if "recipe" in self.extra:
-            prefix += self.extra["recipe"]
+        if "package" in self.extra:
+            prefix += self.extra["package"]
 
         if "arch" in self.extra:
             prefix += f" [{self.extra['arch']}]"
-
-        if "package" in self.extra:
-            prefix += f" ({self.extra['package']})"
 
         if prefix:
             return f"{prefix}: {msg}", kwargs
@@ -62,9 +59,6 @@ class Builder:  # pylint: disable=too-few-public-methods
 
     # Prefix for all Toltec Docker images
     IMAGE_PREFIX = "ghcr.io/toltec-dev/"
-
-    # Toltec Docker image used for generic tasks
-    DEFAULT_IMAGE = "toolchain:v2.1"
 
     def __init__(self, work_dir: str, repo_dir: str) -> None:
         """
@@ -93,37 +87,34 @@ permissions."
 
     def make(
         self,
-        generic_recipe: GenericRecipe,
-        arch_packages: Optional[Mapping[str, Optional[List[Package]]]] = None,
+        recipe_bundle: RecipeBundle,
+        build_matrix: Optional[Mapping[str, Optional[List[Package]]]] = None,
     ) -> bool:
         """
         Build packages defined by a recipe.
 
-        :param generic_recipe: recipe to make
-        :param arch_packages: set of packages to build for each
-            architecture (default: all supported architectures
-            and all declared packages)
+        :param recipe_bundle: architecture versions of the recipe to make
+        :param build_matrix: set of packages to build for each architecture
+            (default: all supported packages for each architecture)
         :returns: true if all the requested packages were built correctly
         """
-        self.context["recipe"] = generic_recipe.name
-
         if not util.check_directory(
             self.work_dir,
-            f"The build directory '{os.path.relpath(self.work_dir)}' for \
-recipe '{generic_recipe.name}' already exists.\nWould you like to [c]ancel, \
-[r]emove that directory, or [k]eep it (not recommended)?",
+            f"The build directory '{os.path.relpath(self.work_dir)}' \
+already exists.\nWould you like to [c]ancel, [r]emove that directory, \
+or [k]eep it (not recommended)?",
         ):
             return False
 
         for name in (
-            list(arch_packages.keys())
-            if arch_packages is not None
-            else list(generic_recipe.recipes.keys())
+            list(build_matrix.keys())
+            if build_matrix is not None
+            else list(recipe_bundle.keys())
         ):
             if not self._make_arch(
-                generic_recipe.recipes[name],
+                recipe_bundle[name],
                 os.path.join(self.work_dir, name),
-                arch_packages[name] if arch_packages is not None else None,
+                build_matrix[name] if build_matrix is not None else None,
             ):
                 return False
 
@@ -175,9 +166,7 @@ recipe '{generic_recipe.name}' already exists.\nWould you like to [c]ancel, \
 
             if self.URL_REGEX.match(source.url) is None:
                 # Get source file from the recipe’s directory
-                shutil.copy2(
-                    os.path.join(recipe.parent.path, source.url), local_path
-                )
+                shutil.copy2(os.path.join(recipe.path, source.url), local_path)
             else:
                 # Fetch source file from the network
                 req = requests.get(source.url)
@@ -211,18 +200,14 @@ source file '{source.url}', got {req.status_code}"
 
     def _prepare(self, recipe: Recipe, src_dir: str) -> None:
         """Prepare source files before building."""
-        script = recipe.functions["prepare"]
-
-        if not script:
+        if not recipe.prepare:
             self.adapter.debug("Skipping prepare (nothing to do)")
             return
 
         self.adapter.info("Preparing source files")
         logs = bash.run_script(
-            script=script,
+            script=recipe.prepare,
             variables={
-                **recipe.variables,
-                **recipe.custom_variables,
                 "srcdir": src_dir,
             },
         )
@@ -231,9 +216,7 @@ source file '{source.url}', got {req.status_code}"
 
     def _build(self, recipe: Recipe, src_dir: str) -> None:
         """Build artifacts for a recipe."""
-        script = recipe.functions["build"]
-
-        if not script:
+        if not recipe.build:
             self.adapter.debug("Skipping build (nothing to do)")
             return
 
@@ -319,15 +302,13 @@ source file '{source.url}', got {req.status_code}"
                 ),
             ],
             variables={
-                **recipe.variables,
-                **recipe.custom_variables,
                 "srcdir": mount_src,
             },
             script="\n".join(
                 (
                     *pre_script,
                     f'cd "{mount_src}"',
-                    script,
+                    recipe.build,
                     f'chown -R {uid}:{uid} "{mount_src}"',
                 )
             ),
@@ -339,10 +320,8 @@ source file '{source.url}', got {req.status_code}"
         """Make a package from a recipe’s build artifacts."""
         self.adapter.info("Packaging build artifacts")
         logs = bash.run_script(
-            script=package.functions["package"],
+            script=package.package,
             variables={
-                **package.variables,
-                **package.custom_variables,
                 "srcdir": src_dir,
                 "pkgdir": pkg_dir,
             },
@@ -368,29 +347,20 @@ source file '{source.url}', got {req.status_code}"
 
         # Convert install scripts to Debian format
         scripts = {}
-        script_header = "\n".join(
-            (
-                textwrap.dedent(
-                    """\
-                    #!/usr/bin/env bash
-                    set -euo pipefail
-                    """
-                ),
-                bash.put_variables(
-                    {
-                        **package.variables,
-                        **package.custom_variables,
-                    }
-                ),
-                bash.put_functions(package.custom_functions),
-            )
+        script_header = textwrap.dedent(
+            """\
+            #!/usr/bin/env bash
+            set -euo pipefail
+            """
         )
 
         for name, script, action in (
             ("preinstall", "preinst", "install"),
             ("configure", "postinst", "configure"),
         ):
-            if package.functions[name]:
+            function = getattr(package, name)
+
+            if function:
                 scripts[script] = "\n".join(
                     (
                         script_header,
@@ -400,7 +370,7 @@ source file '{source.url}', got {req.status_code}"
                                 script() {{
                             """
                         ),
-                        package.functions[name],
+                        function,
                         textwrap.dedent(
                             """\
                                 }
@@ -412,14 +382,15 @@ source file '{source.url}', got {req.status_code}"
                 )
 
         for step in ("pre", "post"):
-            if (
-                package.functions[step + "upgrade"]
-                or package.functions[step + "remove"]
+            if getattr(package, step + "upgrade") or getattr(
+                package, step + "remove"
             ):
                 script = script_header
 
                 for action in ("upgrade", "remove"):
-                    if package.functions[step + action]:
+                    function = getattr(package, step + action)
+
+                    if function:
                         script += "\n".join(
                             (
                                 textwrap.dedent(
@@ -428,7 +399,7 @@ source file '{source.url}', got {req.status_code}"
                                         script() {{
                                     """
                                 ),
-                                package.functions[step + action],
+                                function,
                                 textwrap.dedent(
                                     """\
                                         }

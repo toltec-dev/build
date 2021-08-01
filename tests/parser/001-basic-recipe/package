@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Copyright (c) 2021 The Toltec Contributors
+# SPDX-License-Identifier: MIT
+
+pkgnames=(basic-recipe)
+pkgdesc="A simple test for recipe parsing"
+url=https://example.org/toltec/basic-recipe
+pkgver=42.0-1
+timestamp=2021-07-31T20:44Z
+section="test"
+maintainer="None <none@example.org>"
+license=MIT
+
+image=base:v2.1
+source=("https://example.org/toltec/${pkgnames[0]}/release-${pkgver%-*}.zip")
+sha256sums=(SKIP)
+
+build() {
+    echo "Build function"
+}
+
+package() {
+    echo "Package function"
+}

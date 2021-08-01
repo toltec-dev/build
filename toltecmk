@@ -8,8 +8,9 @@ import logging
 import os
 import sys
 from typing import Dict, List, Optional
+from toltec import parse_recipe
 from toltec.builder import Builder
-from toltec.recipe import GenericRecipe, Package
+from toltec.recipe import Package
 from toltec.repo import make_index
 from toltec.util import argparse_add_verbose, LOGGING_FORMAT
 
@@ -65,7 +66,7 @@ argparse_add_verbose(parser)
 args = parser.parse_args()
 logging.basicConfig(format=LOGGING_FORMAT, level=args.verbose)
 
-generic_recipe = GenericRecipe.from_file(args.recipe_dir)
+recipe_bundle = parse_recipe(args.recipe_dir)
 builder = Builder(args.work_dir, args.dist_dir)
 
 build_matrix: Optional[Dict[str, Optional[List[Package]]]] = None
@@ -73,16 +74,15 @@ build_matrix: Optional[Dict[str, Optional[List[Package]]]] = None
 if args.arch_name or args.package_name:
     build_matrix = {}
 
-    for arch in generic_recipe.recipes.keys():
+    for arch, recipes in recipe_bundle.items():
         if args.package_name:
             build_matrix[arch] = [
-                generic_recipe.recipes[arch].packages[pkg_name]
-                for pkg_name in args.package_name
+                recipes.packages[pkg_name] for pkg_name in args.package_name
             ]
         else:
             build_matrix[arch] = None
 
-if not builder.make(generic_recipe, build_matrix):
+if not builder.make(recipe_bundle, build_matrix):
     sys.exit(1)
 
 make_index(args.dist_dir)
