@@ -187,13 +187,6 @@ build() step"
     pkgnames = _pop_field_indexed(variables, "pkgnames")
     attrs["packages"] = {}
 
-    _add_script_header(
-        attrs,
-        ("prepare", "build"),
-        {**raw_vars, **variables},
-        functions,
-    )
-
     result = Recipe(**attrs)
 
     if len(pkgnames) == 1:
@@ -205,7 +198,7 @@ build() step"
             result,
             variables.copy(),
             raw_vars.copy(),
-            functions.copy(),
+            functions,
         )
     else:
         # Split-package recipe: load package-local declarations
@@ -241,10 +234,17 @@ corresponding package"
                 pkg_funcs,
             )
 
+    _add_script_header(
+        result,
+        ("prepare", "build"),
+        {**raw_vars, **variables},
+        functions,
+    )
+
     return result
 
 
-def _parse_package(
+def _parse_package(  # pylint: disable=too-many-locals, disable=too-many-statements
     parent: Recipe,
     variables: bash.Variables,
     raw_vars: bash.Variables,
@@ -311,21 +311,6 @@ def _parse_package(
     for rel, step in product(("pre", "post"), ("remove", "upgrade")):
         attrs[rel + step] = functions.pop(rel + step, "")
 
-    _add_script_header(
-        attrs,
-        (
-            "package",
-            "preinstall",
-            "configure",
-            "preremove",
-            "postremove",
-            "preupgrade",
-            "postupgrade",
-        ),
-        {**raw_vars, **variables},
-        functions,
-    )
-
     # Check that remaining variables and functions are prefixed
     for var_name in variables.keys():
         if not var_name.startswith("_"):
@@ -343,7 +328,22 @@ package {attrs['name']} — make sure to prefix the names of \
 custom functions with '_'"
             )
 
-    return Package(**attrs)
+    result = Package(**attrs)
+    _add_script_header(
+        result,
+        (
+            "package",
+            "preinstall",
+            "configure",
+            "preremove",
+            "postremove",
+            "preupgrade",
+            "postupgrade",
+        ),
+        {**raw_vars, **variables},
+        functions,
+    )
+    return result
 
 
 def _pop_field_string(
@@ -387,7 +387,7 @@ got {type(variables[name]).__name__}"
 
 
 def _add_script_header(
-    attrs: Dict[str, Any],
+    obj: object,
     keys: Iterable[str],
     variables: bash.Variables,
     functions: bash.Functions,
@@ -400,5 +400,5 @@ def _add_script_header(
     )
 
     for key in keys:
-        if attrs[key]:
-            attrs[key] = header + attrs[key]
+        if getattr(obj, key):
+            setattr(obj, key, header + getattr(obj, key))

@@ -228,3 +228,19 @@ class Dependency:
 package={repr(self.package)}, \
 version_comparator={repr(self.version_comparator)}, \
 version={repr(self.version)})"
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Dependency):
+            return (
+                self.kind == other.kind
+                and self.package == other.package
+                and self.version_comparator == other.version_comparator
+                and self.version == other.version
+            )
+
+        return False
+
+    def __hash__(self) -> int:
+        return hash(
+            (self.kind, self.package, self.version_comparator, self.version)
+        )
