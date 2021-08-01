@@ -2,13 +2,19 @@
 # SPDX-License-Identifier: MIT
 
 define USAGE
-Available commands:
+Testing:
 
-    test            Run unit tests.
+    test            Run tests.
+
+Formatting:
+
     format          Check that the source code formatting follows
                     the style guide.
     format-fix      Automatically reformat the source code to follow
                     the style guide.
+
+Linting:
+
     lint            Perform static analysis on the source code to find
                     erroneous constructs.
 endef

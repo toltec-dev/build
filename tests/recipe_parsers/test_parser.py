@@ -12,9 +12,10 @@ from toltec.version import Version, Dependency, DependencyKind
 class TestParser(unittest.TestCase):
     def setUp(self) -> None:
         self.dir = path.dirname(path.realpath(__file__))
+        self.fixtures_dir = path.join(self.dir, "..", "fixtures")
 
     def test_basic_recipe(self) -> None:
-        rec_path = path.join(self.dir, "001-basic-recipe")
+        rec_path = path.join(self.fixtures_dir, "basic-recipe")
         recipes = parse_recipe(rec_path)
 
         self.assertEqual(list(recipes.keys()), ["rmall"])
@@ -132,7 +133,7 @@ Architecture: rmall
         )
 
     def test_split_packages(self):
-        rec_path = path.join(self.dir, "002-split-packages")
+        rec_path = path.join(self.fixtures_dir, "split-packages")
         recipes = parse_recipe(rec_path)
         self.assertEqual(list(recipes.keys()), ["rmall"])
         recipe = recipes["rmall"]
@@ -324,7 +325,7 @@ declare -- _upver=4.3.2
         )
 
     def test_split_archs(self):
-        rec_path = path.join(self.dir, "003-split-archs")
+        rec_path = path.join(self.fixtures_dir, "split-archs")
         recipes = parse_recipe(rec_path)
         self.assertEqual(list(recipes.keys()), ["rm1", "rm2"])
 
@@ -340,7 +341,9 @@ declare -- _upver=4.3.2
         self.assertEqual(rm1.arch, "rm1")
         self.assertEqual(rm1.flags, [])
         self.assertEqual(rm1.prepare, "")
-        self.assertEqual(rm1.build, """\
+        self.assertEqual(
+            rm1.build,
+            """\
 declare -a flags=()
 declare -- timestamp=2020-08-20T12:28Z
 declare -a source=()
@@ -364,11 +367,16 @@ _configure() {
 }
 
     echo "Building for $arch"
-""")
+""",
+        )
 
-        self.assertEqual(list(rm1.packages.keys()), [
-            "test-archs-part1", "test-archs-part2",
-        ])
+        self.assertEqual(
+            list(rm1.packages.keys()),
+            [
+                "test-archs-part1",
+                "test-archs-part2",
+            ],
+        )
 
         part1 = rm1.packages["test-archs-part1"]
         self.assertEqual(part1.name, "test-archs-part1")
@@ -381,12 +389,15 @@ _configure() {
         self.assertEqual(part1.url, "https://example.org/test-archs")
         self.assertEqual(part1.section, "math")
         self.assertEqual(part1.license, "GPL-3.0-or-later")
-        self.assertEqual(part1.installdepends, {
-            Dependency(DependencyKind.HOST, "some-package")
-        })
+        self.assertEqual(
+            part1.installdepends,
+            {Dependency(DependencyKind.HOST, "some-package")},
+        )
         self.assertEqual(part1.conflicts, set())
         self.assertEqual(part1.replaces, set())
-        self.assertEqual(part1.package, """\
+        self.assertEqual(
+            part1.package,
+            """\
 declare -a flags=()
 declare -- timestamp=2020-08-20T12:28Z
 declare -a source=()
@@ -413,9 +424,12 @@ _configure() {
 }
 
     echo "Package part 1"
-""")
+""",
+        )
         self.assertEqual(part1.preinstall, "")
-        self.assertEqual(part1.configure, """\
+        self.assertEqual(
+            part1.configure,
+            """\
 declare -a flags=()
 declare -- timestamp=2020-08-20T12:28Z
 declare -a source=()
@@ -443,7 +457,8 @@ _configure() {
 
     echo "This is $pkgname";
     _configure
-""")
+""",
+        )
         self.assertEqual(part1.preupgrade, "")
         self.assertEqual(part1.postupgrade, "")
         self.assertEqual(part1.preremove, "")
@@ -460,12 +475,15 @@ _configure() {
         self.assertEqual(part2.url, "https://example.org/test-archs")
         self.assertEqual(part2.section, "math")
         self.assertEqual(part2.license, "GPL-3.0-or-later")
-        self.assertEqual(part2.installdepends, {
-            Dependency(DependencyKind.HOST, "some-package")
-        })
+        self.assertEqual(
+            part2.installdepends,
+            {Dependency(DependencyKind.HOST, "some-package")},
+        )
         self.assertEqual(part2.conflicts, set())
         self.assertEqual(part2.replaces, set())
-        self.assertEqual(part2.package, """\
+        self.assertEqual(
+            part2.package,
+            """\
 declare -a flags=()
 declare -- timestamp=2020-08-20T12:28Z
 declare -a source=()
@@ -492,9 +510,12 @@ _configure() {
 }
 
     echo "Package part 2"
-""")
+""",
+        )
         self.assertEqual(part2.preinstall, "")
-        self.assertEqual(part2.configure, """\
+        self.assertEqual(
+            part2.configure,
+            """\
 declare -a flags=()
 declare -- timestamp=2020-08-20T12:28Z
 declare -a source=()
@@ -522,7 +543,8 @@ _configure() {
 
     echo "This is $pkgname";
     _configure
-""")
+""",
+        )
         self.assertEqual(part2.preupgrade, "")
         self.assertEqual(part2.postupgrade, "")
         self.assertEqual(part2.preremove, "")
@@ -540,7 +562,9 @@ _configure() {
         self.assertEqual(rm2.arch, "rm2")
         self.assertEqual(rm2.flags, [])
         self.assertEqual(rm2.prepare, "")
-        self.assertEqual(rm2.build, """\
+        self.assertEqual(
+            rm2.build,
+            """\
 declare -a flags=()
 declare -- timestamp=2020-08-20T12:28Z
 declare -a source=()
@@ -564,11 +588,16 @@ _configure() {
 }
 
     echo "Building for $arch"
-""")
+""",
+        )
 
-        self.assertEqual(list(rm2.packages.keys()), [
-            "test-archs-part1", "test-archs-part2",
-        ])
+        self.assertEqual(
+            list(rm2.packages.keys()),
+            [
+                "test-archs-part1",
+                "test-archs-part2",
+            ],
+        )
 
         part1 = rm2.packages["test-archs-part1"]
         self.assertEqual(part1.name, "test-archs-part1")
@@ -581,13 +610,18 @@ _configure() {
         self.assertEqual(part1.url, "https://example.org/test-archs-rm2")
         self.assertEqual(part1.section, "math-rm2")
         self.assertEqual(part1.license, "MIT")
-        self.assertEqual(part1.installdepends, {
-            Dependency(DependencyKind.HOST, "some-package"),
-            Dependency(DependencyKind.HOST, "rm2-only-dep"),
-        })
+        self.assertEqual(
+            part1.installdepends,
+            {
+                Dependency(DependencyKind.HOST, "some-package"),
+                Dependency(DependencyKind.HOST, "rm2-only-dep"),
+            },
+        )
         self.assertEqual(part1.conflicts, set())
         self.assertEqual(part1.replaces, set())
-        self.assertEqual(part1.package, """\
+        self.assertEqual(
+            part1.package,
+            """\
 declare -a flags=()
 declare -- timestamp=2020-08-20T12:28Z
 declare -a source=()
@@ -614,9 +648,12 @@ _configure() {
 }
 
     echo "Package part 1"
-""")
+""",
+        )
         self.assertEqual(part1.preinstall, "")
-        self.assertEqual(part1.configure, """\
+        self.assertEqual(
+            part1.configure,
+            """\
 declare -a flags=()
 declare -- timestamp=2020-08-20T12:28Z
 declare -a source=()
@@ -644,7 +681,8 @@ _configure() {
 
     echo "This is $pkgname";
     _configure
-""")
+""",
+        )
         self.assertEqual(part1.preupgrade, "")
         self.assertEqual(part1.postupgrade, "")
         self.assertEqual(part1.preremove, "")
@@ -661,13 +699,18 @@ _configure() {
         self.assertEqual(part2.url, "https://example.org/test-archs-rm2")
         self.assertEqual(part2.section, "math-rm2")
         self.assertEqual(part2.license, "MIT")
-        self.assertEqual(part2.installdepends, {
-            Dependency(DependencyKind.HOST, "some-package"),
-            Dependency(DependencyKind.HOST, "rm2-only-dep"),
-        })
+        self.assertEqual(
+            part2.installdepends,
+            {
+                Dependency(DependencyKind.HOST, "some-package"),
+                Dependency(DependencyKind.HOST, "rm2-only-dep"),
+            },
+        )
         self.assertEqual(part2.conflicts, set())
         self.assertEqual(part2.replaces, set())
-        self.assertEqual(part2.package, """\
+        self.assertEqual(
+            part2.package,
+            """\
 declare -a flags=()
 declare -- timestamp=2020-08-20T12:28Z
 declare -a source=()
@@ -694,9 +737,12 @@ _configure() {
 }
 
     echo "Package part 2"
-""")
+""",
+        )
         self.assertEqual(part2.preinstall, "")
-        self.assertEqual(part2.configure, """\
+        self.assertEqual(
+            part2.configure,
+            """\
 declare -a flags=()
 declare -- timestamp=2020-08-20T12:28Z
 declare -a source=()
@@ -724,7 +770,8 @@ _configure() {
 
     echo "This is $pkgname";
     _configure
-""")
+""",
+        )
         self.assertEqual(part2.preupgrade, "")
         self.assertEqual(part2.postupgrade, "")
         self.assertEqual(part2.preremove, "")

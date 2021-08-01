@@ -162,7 +162,7 @@ class Package:  # pylint: disable=too-many-instance-attributes
                 control += (
                     debian_name
                     + ": "
-                    + ", ".join(dep.to_debian() for dep in field if dep)
+                    + ", ".join(sorted(dep.to_debian() for dep in field if dep))
                     + "\n"
                 )
 

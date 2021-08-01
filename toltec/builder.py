@@ -4,14 +4,10 @@
 
 import shutil
 from typing import (
-    Any,
-    Dict,
     Deque,
     List,
     Mapping,
-    MutableMapping,
     Optional,
-    Tuple,
 )
 from collections import deque
 import re
@@ -31,26 +27,6 @@ class BuildError(Exception):
     """Raised when a build step fails."""
 
 
-class BuildContextAdapter(logging.LoggerAdapter):
-    """Prefix log entries with information about the current build target."""
-
-    def process(
-        self, msg: str, kwargs: MutableMapping[str, Any]
-    ) -> Tuple[str, MutableMapping[str, Any]]:
-        prefix = ""
-
-        if "package" in self.extra:
-            prefix += self.extra["package"]
-
-        if "arch" in self.extra:
-            prefix += f" [{self.extra['arch']}]"
-
-        if prefix:
-            return f"{prefix}: {msg}", kwargs
-
-        return msg, kwargs
-
-
 class Builder:  # pylint: disable=too-few-public-methods
     """Helper class for building recipes."""
 
@@ -60,21 +36,15 @@ class Builder:  # pylint: disable=too-few-public-methods
     # Prefix for all Toltec Docker images
     IMAGE_PREFIX = "ghcr.io/toltec-dev/"
 
-    def __init__(self, work_dir: str, repo_dir: str) -> None:
+    def __init__(self, work_dir: str, dist_dir: str) -> None:
         """
         Create a builder helper.
 
         :param work_dir: directory where packages are built
-        :param repo_dir: directory where built packages are stored
+        :param dist_dir: directory where built packages are stored
         """
         self.work_dir = work_dir
-        os.makedirs(work_dir, exist_ok=True)
-
-        self.repo_dir = repo_dir
-        os.makedirs(repo_dir, exist_ok=True)
-
-        self.context: Dict[str, str] = {}
-        self.adapter = BuildContextAdapter(logger, self.context)
+        self.dist_dir = dist_dir
 
         try:
             self.docker = docker.from_env()
@@ -100,11 +70,14 @@ permissions."
         """
         if not util.check_directory(
             self.work_dir,
-            f"The build directory '{os.path.relpath(self.work_dir)}' \
+            f"The build directory '{self.work_dir}' \
 already exists.\nWould you like to [c]ancel, [r]emove that directory, \
 or [k]eep it (not recommended)?",
         ):
             return False
+
+        os.makedirs(self.work_dir, exist_ok=True)
+        os.makedirs(self.dist_dir, exist_ok=True)
 
         for name in (
             list(build_matrix.keys())
@@ -126,8 +99,6 @@ or [k]eep it (not recommended)?",
         build_dir: str,
         packages: Optional[List[Package]] = None,
     ) -> bool:
-        self.context["arch"] = recipe.arch
-
         src_dir = os.path.join(build_dir, "src")
         os.makedirs(src_dir, exist_ok=True)
         self._fetch_sources(recipe, src_dir)
@@ -141,15 +112,12 @@ or [k]eep it (not recommended)?",
         for package in (
             packages if packages is not None else recipe.packages.values()
         ):
-            self.context["package"] = package.name
             pkg_dir = os.path.join(base_pkg_dir, package.name)
             os.makedirs(pkg_dir, exist_ok=True)
 
             self._package(package, src_dir, pkg_dir)
             self._archive(package, pkg_dir)
-            del self.context["package"]
 
-        del self.context["arch"]
         return True
 
     def _fetch_sources(
@@ -158,7 +126,7 @@ or [k]eep it (not recommended)?",
         src_dir: str,
     ) -> None:
         """Fetch and extract all source files required to build a recipe."""
-        self.adapter.info("Fetching source files")
+        logger.info("Fetching source files")
 
         for source in recipe.sources:
             filename = os.path.basename(source.url)
@@ -193,7 +161,7 @@ source file '{source.url}', got {req.status_code}"
             # Automatically extract source archives
             if not source.noextract:
                 if not util.auto_extract(local_path, src_dir):
-                    self.adapter.debug(
+                    logger.debug(
                         "Not extracting %s (unsupported archive type)",
                         local_path,
                     )
@@ -201,10 +169,10 @@ source file '{source.url}', got {req.status_code}"
     def _prepare(self, recipe: Recipe, src_dir: str) -> None:
         """Prepare source files before building."""
         if not recipe.prepare:
-            self.adapter.debug("Skipping prepare (nothing to do)")
+            logger.debug("Skipping prepare (nothing to do)")
             return
 
-        self.adapter.info("Preparing source files")
+        logger.info("Preparing source files")
         logs = bash.run_script(
             script=recipe.prepare,
             variables={
@@ -217,10 +185,10 @@ source file '{source.url}', got {req.status_code}"
     def _build(self, recipe: Recipe, src_dir: str) -> None:
         """Build artifacts for a recipe."""
         if not recipe.build:
-            self.adapter.debug("Skipping build (nothing to do)")
+            logger.debug("Skipping build (nothing to do)")
             return
 
-        self.adapter.info("Building artifacts")
+        logger.info("Building artifacts")
 
         # Set fixed atime and mtime for all the source files
         epoch = int(recipe.timestamp.timestamp())
@@ -297,7 +265,7 @@ source file '{source.url}', got {req.status_code}"
                 ),
                 docker.types.Mount(
                     type="bind",
-                    source=os.path.abspath(self.repo_dir),
+                    source=os.path.abspath(self.dist_dir),
                     target=repo_src,
                 ),
             ],
@@ -318,7 +286,7 @@ source file '{source.url}', got {req.status_code}"
 
     def _package(self, package: Package, src_dir: str, pkg_dir: str) -> None:
         """Make a package from a recipe’s build artifacts."""
-        self.adapter.info("Packaging build artifacts")
+        logger.info("Packaging build artifacts for %s", package.name)
         logs = bash.run_script(
             script=package.package,
             variables={
@@ -328,10 +296,10 @@ source file '{source.url}', got {req.status_code}"
         )
 
         self._print_logs(logs, "package()")
-        self.adapter.debug("Resulting tree:")
+        logger.debug("Resulting tree:")
 
         for filename in util.list_tree(pkg_dir):
-            self.adapter.debug(
+            logger.debug(
                 " - %s",
                 os.path.normpath(
                     os.path.join("/", os.path.relpath(filename, pkg_dir))
@@ -340,8 +308,8 @@ source file '{source.url}', got {req.status_code}"
 
     def _archive(self, package: Package, pkg_dir: str) -> None:
         """Create an archive for a package."""
-        self.adapter.info("Creating archive")
-        ar_path = os.path.join(self.repo_dir, package.filename())
+        logger.info("Creating archive %s", package.filename())
+        ar_path = os.path.join(self.dist_dir, package.filename())
         ar_dir = os.path.dirname(ar_path)
         os.makedirs(ar_dir, exist_ok=True)
 
@@ -412,13 +380,13 @@ source file '{source.url}', got {req.status_code}"
 
                 scripts[step + "rm"] = script
 
-        self.adapter.debug("Install scripts:")
+        logger.debug("Install scripts:")
 
         if scripts:
             for script in sorted(scripts):
-                self.adapter.debug(" - %s", script)
+                logger.debug(" - %s", script)
         else:
-            self.adapter.debug("(none)")
+            logger.debug("(none)")
 
         epoch = int(package.parent.timestamp.timestamp())
 
@@ -434,8 +402,8 @@ source file '{source.url}', got {req.status_code}"
         # Set fixed atime and mtime for the resulting archive
         os.utime(ar_path, (epoch, epoch))
 
+    @staticmethod
     def _print_logs(
-        self,
         logs: bash.LogGenerator,
         function_name: str = None,
         max_lines_on_fail: int = 50,
@@ -452,22 +420,23 @@ source file '{source.url}', got {req.status_code}"
         log_buffer: Deque[str] = deque()
         try:
             for line in logs:
-                if self.adapter.getEffectiveLevel() <= logging.DEBUG:
-                    self.adapter.debug(line)
+                if logger.getEffectiveLevel() <= logging.DEBUG:
+                    logger.debug("%s: %s", function_name, line)
                 else:
                     if len(log_buffer) == max_lines_on_fail:
                         log_buffer.popleft()
                     log_buffer.append(line)
         except bash.ScriptError as err:
             if len(log_buffer) > 0:
-                self.adapter.info(
-                    f"Only showing up to {max_lines_on_fail} lines of context. "
-                    + "Use --verbose for the full output."
+                logger.info(
+                    "Only showing up to %s lines of context. "
+                    "Use --verbose for the full output.",
+                    max_lines_on_fail,
                 )
                 for line in log_buffer:
-                    self.adapter.error(line)
+                    logger.error("%s: %s", function_name, line)
 
             if function_name:
-                self.adapter.error(f"{function_name} failed")
+                logger.error("%s failed", function_name)
 
             raise err
