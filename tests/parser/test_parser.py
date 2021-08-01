@@ -133,7 +133,9 @@ Architecture: rmall
 
     def test_split_packages(self):
         rec_path = path.join(self.dir, "002-split-packages")
-        recipe = parse_recipe(rec_path)["rmall"]
+        recipes = parse_recipe(rec_path)
+        self.assertEqual(list(recipes.keys()), ["rmall"])
+        recipe = recipes["rmall"]
 
         self.assertEqual(recipe.path, rec_path)
         self.assertEqual(recipe.makedepends, set())
@@ -184,6 +186,7 @@ declare -- pkgver=5:4.3.2-1
 """,
         )
 
+        self.assertEqual(list(recipe.packages.keys()), ["pkg1", "pkg2", "pkg3"])
         pkg1 = recipe.packages["pkg1"]
 
         self.assertEqual(pkg1.name, "pkg1")
@@ -319,3 +322,410 @@ declare -- _upver=4.3.2
     echo "Third package function"
 """,
         )
+
+    def test_split_archs(self):
+        rec_path = path.join(self.dir, "003-split-archs")
+        recipes = parse_recipe(rec_path)
+        self.assertEqual(list(recipes.keys()), ["rm1", "rm2"])
+
+        rm1 = recipes["rm1"]
+        self.assertEqual(rm1.path, rec_path)
+        self.assertEqual(
+            rm1.timestamp, datetime(2020, 8, 20, 12, 28, 0, 0, timezone.utc)
+        )
+        self.assertEqual(rm1.sources, set())
+        self.assertEqual(rm1.makedepends, set())
+        self.assertEqual(rm1.maintainer, "Mattéo Delabre <spam@delab.re>")
+        self.assertEqual(rm1.image, "qt:v1.1")
+        self.assertEqual(rm1.arch, "rm1")
+        self.assertEqual(rm1.flags, [])
+        self.assertEqual(rm1.prepare, "")
+        self.assertEqual(rm1.build, """\
+declare -a flags=()
+declare -- timestamp=2020-08-20T12:28Z
+declare -a source=()
+declare -a sha256sums=()
+declare -a noextract=()
+declare -a makedepends=()
+declare -- maintainer='Mattéo Delabre <spam@delab.re>'
+declare -- image=qt:v1.1
+declare -- arch=rm1
+declare -a installdepends=([0]=some-package)
+declare -- license=GPL-3.0-or-later
+declare -- pkgdesc='Dummy package for testing the arch separation feature'
+declare -- section=math
+declare -- url=https://example.org/test-archs
+declare -- pkgver=0.0.0-1
+
+_configure() {
+
+    echo "This package was built for $arch"
+
+}
+
+    echo "Building for $arch"
+""")
+
+        self.assertEqual(list(rm1.packages.keys()), [
+            "test-archs-part1", "test-archs-part2",
+        ])
+
+        part1 = rm1.packages["test-archs-part1"]
+        self.assertEqual(part1.name, "test-archs-part1")
+        self.assertEqual(part1.parent, rm1)
+        self.assertEqual(part1.version, Version(0, "0.0.0", "1"))
+        self.assertEqual(
+            part1.desc,
+            "rm1 test-archs-part1 - test arch separation",
+        )
+        self.assertEqual(part1.url, "https://example.org/test-archs")
+        self.assertEqual(part1.section, "math")
+        self.assertEqual(part1.license, "GPL-3.0-or-later")
+        self.assertEqual(part1.installdepends, {
+            Dependency(DependencyKind.HOST, "some-package")
+        })
+        self.assertEqual(part1.conflicts, set())
+        self.assertEqual(part1.replaces, set())
+        self.assertEqual(part1.package, """\
+declare -a flags=()
+declare -- timestamp=2020-08-20T12:28Z
+declare -a source=()
+declare -a sha256sums=()
+declare -a noextract=()
+declare -a makedepends=()
+declare -- maintainer='Mattéo Delabre <spam@delab.re>'
+declare -- image=qt:v1.1
+declare -- arch=rm1
+declare -- pkgname=test-archs-part1
+declare -- pkgver=0.0.0-1
+declare -- pkgdesc='rm1 test-archs-part1 - test arch separation'
+declare -- url=https://example.org/test-archs
+declare -- section=math
+declare -- license=GPL-3.0-or-later
+declare -a installdepends=([0]=some-package)
+declare -a conflicts=()
+declare -a replaces=()
+
+_configure() {
+
+    echo "This package was built for $arch"
+
+}
+
+    echo "Package part 1"
+""")
+        self.assertEqual(part1.preinstall, "")
+        self.assertEqual(part1.configure, """\
+declare -a flags=()
+declare -- timestamp=2020-08-20T12:28Z
+declare -a source=()
+declare -a sha256sums=()
+declare -a noextract=()
+declare -a makedepends=()
+declare -- maintainer='Mattéo Delabre <spam@delab.re>'
+declare -- image=qt:v1.1
+declare -- arch=rm1
+declare -- pkgname=test-archs-part1
+declare -- pkgver=0.0.0-1
+declare -- pkgdesc='rm1 test-archs-part1 - test arch separation'
+declare -- url=https://example.org/test-archs
+declare -- section=math
+declare -- license=GPL-3.0-or-later
+declare -a installdepends=([0]=some-package)
+declare -a conflicts=()
+declare -a replaces=()
+
+_configure() {
+
+    echo "This package was built for $arch"
+
+}
+
+    echo "This is $pkgname";
+    _configure
+""")
+        self.assertEqual(part1.preupgrade, "")
+        self.assertEqual(part1.postupgrade, "")
+        self.assertEqual(part1.preremove, "")
+        self.assertEqual(part1.postremove, "")
+
+        part2 = rm1.packages["test-archs-part2"]
+        self.assertEqual(part2.name, "test-archs-part2")
+        self.assertEqual(part2.parent, rm1)
+        self.assertEqual(part2.version, Version(0, "0.0.0", "1"))
+        self.assertEqual(
+            part2.desc,
+            "rm1 test-archs-part2 - test arch separation",
+        )
+        self.assertEqual(part2.url, "https://example.org/test-archs")
+        self.assertEqual(part2.section, "math")
+        self.assertEqual(part2.license, "GPL-3.0-or-later")
+        self.assertEqual(part2.installdepends, {
+            Dependency(DependencyKind.HOST, "some-package")
+        })
+        self.assertEqual(part2.conflicts, set())
+        self.assertEqual(part2.replaces, set())
+        self.assertEqual(part2.package, """\
+declare -a flags=()
+declare -- timestamp=2020-08-20T12:28Z
+declare -a source=()
+declare -a sha256sums=()
+declare -a noextract=()
+declare -a makedepends=()
+declare -- maintainer='Mattéo Delabre <spam@delab.re>'
+declare -- image=qt:v1.1
+declare -- arch=rm1
+declare -- pkgname=test-archs-part2
+declare -- pkgver=0.0.0-1
+declare -- pkgdesc='rm1 test-archs-part2 - test arch separation'
+declare -- url=https://example.org/test-archs
+declare -- section=math
+declare -- license=GPL-3.0-or-later
+declare -a installdepends=([0]=some-package)
+declare -a conflicts=()
+declare -a replaces=()
+
+_configure() {
+
+    echo "This package was built for $arch"
+
+}
+
+    echo "Package part 2"
+""")
+        self.assertEqual(part2.preinstall, "")
+        self.assertEqual(part2.configure, """\
+declare -a flags=()
+declare -- timestamp=2020-08-20T12:28Z
+declare -a source=()
+declare -a sha256sums=()
+declare -a noextract=()
+declare -a makedepends=()
+declare -- maintainer='Mattéo Delabre <spam@delab.re>'
+declare -- image=qt:v1.1
+declare -- arch=rm1
+declare -- pkgname=test-archs-part2
+declare -- pkgver=0.0.0-1
+declare -- pkgdesc='rm1 test-archs-part2 - test arch separation'
+declare -- url=https://example.org/test-archs
+declare -- section=math
+declare -- license=GPL-3.0-or-later
+declare -a installdepends=([0]=some-package)
+declare -a conflicts=()
+declare -a replaces=()
+
+_configure() {
+
+    echo "This package was built for $arch"
+
+}
+
+    echo "This is $pkgname";
+    _configure
+""")
+        self.assertEqual(part2.preupgrade, "")
+        self.assertEqual(part2.postupgrade, "")
+        self.assertEqual(part2.preremove, "")
+        self.assertEqual(part2.postremove, "")
+
+        rm2 = recipes["rm2"]
+        self.assertEqual(rm2.path, rec_path)
+        self.assertEqual(
+            rm2.timestamp, datetime(2020, 8, 20, 12, 28, 0, 0, timezone.utc)
+        )
+        self.assertEqual(rm2.sources, set())
+        self.assertEqual(rm2.makedepends, set())
+        self.assertEqual(rm2.maintainer, "None <none@example.com>")
+        self.assertEqual(rm2.image, "qt:v1.3")
+        self.assertEqual(rm2.arch, "rm2")
+        self.assertEqual(rm2.flags, [])
+        self.assertEqual(rm2.prepare, "")
+        self.assertEqual(rm2.build, """\
+declare -a flags=()
+declare -- timestamp=2020-08-20T12:28Z
+declare -a source=()
+declare -a sha256sums=()
+declare -a noextract=()
+declare -a makedepends=()
+declare -- maintainer='None <none@example.com>'
+declare -- image=qt:v1.3
+declare -- arch=rm2
+declare -a installdepends=([0]=some-package [1]=rm2-only-dep)
+declare -- license=MIT
+declare -- pkgdesc='Dummy package for testing the arch separation feature'
+declare -- section=math-rm2
+declare -- url=https://example.org/test-archs-rm2
+declare -- pkgver=0.0.0-2
+
+_configure() {
+
+    echo "This package was built for $arch"
+
+}
+
+    echo "Building for $arch"
+""")
+
+        self.assertEqual(list(rm2.packages.keys()), [
+            "test-archs-part1", "test-archs-part2",
+        ])
+
+        part1 = rm2.packages["test-archs-part1"]
+        self.assertEqual(part1.name, "test-archs-part1")
+        self.assertEqual(part1.parent, rm2)
+        self.assertEqual(part1.version, Version(0, "0.0.0", "2"))
+        self.assertEqual(
+            part1.desc,
+            "rm2 test-archs-part1 - test arch separation",
+        )
+        self.assertEqual(part1.url, "https://example.org/test-archs-rm2")
+        self.assertEqual(part1.section, "math-rm2")
+        self.assertEqual(part1.license, "MIT")
+        self.assertEqual(part1.installdepends, {
+            Dependency(DependencyKind.HOST, "some-package"),
+            Dependency(DependencyKind.HOST, "rm2-only-dep"),
+        })
+        self.assertEqual(part1.conflicts, set())
+        self.assertEqual(part1.replaces, set())
+        self.assertEqual(part1.package, """\
+declare -a flags=()
+declare -- timestamp=2020-08-20T12:28Z
+declare -a source=()
+declare -a sha256sums=()
+declare -a noextract=()
+declare -a makedepends=()
+declare -- maintainer='None <none@example.com>'
+declare -- image=qt:v1.3
+declare -- arch=rm2
+declare -- pkgname=test-archs-part1
+declare -- pkgver=0.0.0-2
+declare -- pkgdesc='rm2 test-archs-part1 - test arch separation'
+declare -- url=https://example.org/test-archs-rm2
+declare -- section=math-rm2
+declare -- license=MIT
+declare -a installdepends=([0]=some-package [1]=rm2-only-dep)
+declare -a conflicts=()
+declare -a replaces=()
+
+_configure() {
+
+    echo "This package was built for $arch"
+
+}
+
+    echo "Package part 1"
+""")
+        self.assertEqual(part1.preinstall, "")
+        self.assertEqual(part1.configure, """\
+declare -a flags=()
+declare -- timestamp=2020-08-20T12:28Z
+declare -a source=()
+declare -a sha256sums=()
+declare -a noextract=()
+declare -a makedepends=()
+declare -- maintainer='None <none@example.com>'
+declare -- image=qt:v1.3
+declare -- arch=rm2
+declare -- pkgname=test-archs-part1
+declare -- pkgver=0.0.0-2
+declare -- pkgdesc='rm2 test-archs-part1 - test arch separation'
+declare -- url=https://example.org/test-archs-rm2
+declare -- section=math-rm2
+declare -- license=MIT
+declare -a installdepends=([0]=some-package [1]=rm2-only-dep)
+declare -a conflicts=()
+declare -a replaces=()
+
+_configure() {
+
+    echo "This package was built for $arch"
+
+}
+
+    echo "This is $pkgname";
+    _configure
+""")
+        self.assertEqual(part1.preupgrade, "")
+        self.assertEqual(part1.postupgrade, "")
+        self.assertEqual(part1.preremove, "")
+        self.assertEqual(part1.postremove, "")
+
+        part2 = rm2.packages["test-archs-part2"]
+        self.assertEqual(part2.name, "test-archs-part2")
+        self.assertEqual(part2.parent, rm2)
+        self.assertEqual(part2.version, Version(0, "0.0.0", "2"))
+        self.assertEqual(
+            part2.desc,
+            "rm2 test-archs-part2 - test arch separation",
+        )
+        self.assertEqual(part2.url, "https://example.org/test-archs-rm2")
+        self.assertEqual(part2.section, "math-rm2")
+        self.assertEqual(part2.license, "MIT")
+        self.assertEqual(part2.installdepends, {
+            Dependency(DependencyKind.HOST, "some-package"),
+            Dependency(DependencyKind.HOST, "rm2-only-dep"),
+        })
+        self.assertEqual(part2.conflicts, set())
+        self.assertEqual(part2.replaces, set())
+        self.assertEqual(part2.package, """\
+declare -a flags=()
+declare -- timestamp=2020-08-20T12:28Z
+declare -a source=()
+declare -a sha256sums=()
+declare -a noextract=()
+declare -a makedepends=()
+declare -- maintainer='None <none@example.com>'
+declare -- image=qt:v1.3
+declare -- arch=rm2
+declare -- pkgname=test-archs-part2
+declare -- pkgver=0.0.0-2
+declare -- pkgdesc='rm2 test-archs-part2 - test arch separation'
+declare -- url=https://example.org/test-archs-rm2
+declare -- section=math-rm2
+declare -- license=MIT
+declare -a installdepends=([0]=some-package [1]=rm2-only-dep)
+declare -a conflicts=()
+declare -a replaces=()
+
+_configure() {
+
+    echo "This package was built for $arch"
+
+}
+
+    echo "Package part 2"
+""")
+        self.assertEqual(part2.preinstall, "")
+        self.assertEqual(part2.configure, """\
+declare -a flags=()
+declare -- timestamp=2020-08-20T12:28Z
+declare -a source=()
+declare -a sha256sums=()
+declare -a noextract=()
+declare -a makedepends=()
+declare -- maintainer='None <none@example.com>'
+declare -- image=qt:v1.3
+declare -- arch=rm2
+declare -- pkgname=test-archs-part2
+declare -- pkgver=0.0.0-2
+declare -- pkgdesc='rm2 test-archs-part2 - test arch separation'
+declare -- url=https://example.org/test-archs-rm2
+declare -- section=math-rm2
+declare -- license=MIT
+declare -a installdepends=([0]=some-package [1]=rm2-only-dep)
+declare -a conflicts=()
+declare -a replaces=()
+
+_configure() {
+
+    echo "This package was built for $arch"
+
+}
+
+    echo "This is $pkgname";
+    _configure
+""")
+        self.assertEqual(part2.preupgrade, "")
+        self.assertEqual(part2.postupgrade, "")
+        self.assertEqual(part2.preremove, "")
+        self.assertEqual(part2.postremove, "")

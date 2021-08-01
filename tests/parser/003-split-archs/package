@@ -16,8 +16,8 @@ maintainer="Mattéo Delabre <spam@delab.re>"
 maintainer_rm2="None <none@example.com>"
 license=GPL-3.0-or-later
 license_rm2=MIT
-depends=("some-$arch-package")
-depends_rm2=(rm2-only-dep)
+installdepends=(some-package)
+installdepends_rm2=(rm2-only-dep)
 
 image=qt:v1.1
 image_rm2=qt:v1.3
@@ -31,10 +31,10 @@ _configure() {
 }
 
 test-archs-part1() {
-    pkgdesc="${archs[*]} $pkgname - test arch separation"
+    pkgdesc="$arch $pkgname - test arch separation"
 
     package() {
-        return
+        echo "Package part 1"
     }
 
     configure() {
@@ -44,10 +44,10 @@ test-archs-part1() {
 }
 
 test-archs-part2() {
-    pkgdesc="${archs[*]} $pkgname - test arch separation"
+    pkgdesc="$arch $pkgname - test arch separation"
 
     package() {
-        return
+        echo "Package part 2"
     }
 
     configure() {

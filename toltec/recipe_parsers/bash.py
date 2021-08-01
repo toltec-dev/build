@@ -231,7 +231,7 @@ corresponding package"
                 result,
                 pkg_vars,
                 raw_vars.copy(),
-                pkg_funcs,
+                {**functions, **pkg_funcs},
             )
 
     _add_script_header(
