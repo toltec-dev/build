@@ -119,11 +119,20 @@ class Package:  # pylint: disable=too-many-instance-attributes
     # Set of packages that must be installed for this package to work
     installdepends: Set[Dependency]
 
+    # Set of packages that this package recommends installing
+    recommends: Set[Dependency]
+
+    # Set of packages that provide additional features for this package
+    optdepends: Set[Dependency]
+
     # Set of incompatible packages
     conflicts: Set[Dependency]
 
     # Set of packages replaced by this package
     replaces: Set[Dependency]
+
+    # Set of packages that this package provides
+    provides: Set[Dependency]
 
     # Bash script for packaging build artifacts
     package: str
@@ -171,8 +180,11 @@ class Package:  # pylint: disable=too-many-instance-attributes
 
         for debian_name, field in (
             ("Depends", self.installdepends),
+            ("Recommends", self.recommends),
+            ("Suggests", self.optdepends),
             ("Conflicts", self.conflicts),
             ("Replaces", self.replaces),
+            ("Provides", self.provides),
         ):
             if field:
                 control += (

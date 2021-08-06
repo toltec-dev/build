@@ -317,7 +317,14 @@ def _parse_package(  # pylint: disable=too-many-locals, disable=too-many-stateme
         parent.path, variables, "license"
     )
 
-    for field in ("installdepends", "conflicts", "replaces"):
+    for field in (
+        "installdepends",
+        "recommends",
+        "optdepends",
+        "conflicts",
+        "replaces",
+        "provides",
+    ):
         field_raw = _pop_field_indexed(parent.path, variables, field, [])
         raw_vars[field] = field_raw
         attrs[field] = set()

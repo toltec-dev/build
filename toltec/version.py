@@ -106,6 +106,9 @@ revision={repr(self.revision)}, epoch={repr(self.epoch)})"
 
         return False
 
+    def __hash__(self) -> int:
+        return hash((self.epoch, self.upstream, self.revision))
+
 
 class DependencyKind(Enum):
     """Kinds of dependencies that may be requested by a package."""

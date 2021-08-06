@@ -9,7 +9,12 @@ from tempfile import TemporaryDirectory
 from datetime import datetime, timezone
 from toltec import parse_recipe
 from toltec.recipe import Package, Recipe, Source, RecipeError, RecipeWarning
-from toltec.version import Version, Dependency, DependencyKind
+from toltec.version import (
+    Version,
+    Dependency,
+    DependencyKind,
+    VersionComparator,
+)
 
 
 class TestParser(unittest.TestCase):
@@ -115,8 +120,11 @@ declare -- pkgname=basic-recipe
         self.assertEqual(package.section, "test")
         self.assertEqual(package.license, "MIT")
         self.assertEqual(package.installdepends, set())
+        self.assertEqual(package.recommends, set())
+        self.assertEqual(package.optdepends, set())
         self.assertEqual(package.conflicts, set())
         self.assertEqual(package.replaces, set())
+        self.assertEqual(package.provides, set())
         self.assertEqual(
             package.package,
             """\
@@ -136,8 +144,11 @@ declare -- url=https://example.org/toltec/basic-recipe
 declare -- section=test
 declare -- license=MIT
 declare -a installdepends=()
+declare -a recommends=()
+declare -a optdepends=()
 declare -a conflicts=()
 declare -a replaces=()
+declare -a provides=()
 
 
     echo "Package function"
@@ -164,6 +175,139 @@ Section: test
 Maintainer: None <none@example.org>
 License: MIT
 Architecture: rmall
+""",
+        )
+
+    def test_dependencies(self):
+        rec_path = path.join(self.dir, "dependencies")
+        os.makedirs(rec_path)
+
+        with open(path.join(rec_path, "package"), "w") as rec_def_file:
+            rec_def_file.write(
+                """
+pkgnames=(dependencies)
+pkgdesc="Test for package dependency declarations"
+url=https://example.org/toltec/dependencies
+pkgver=42.0-1
+timestamp=2021-07-31T20:44Z
+section="test"
+maintainer="None <none@example.org>"
+license=MIT
+installdepends=(aa bb cc=0.1 "dd>=2.0" "ee>=1.4" "ee<<2.0")
+recommends=(ff gg hh)
+optdepends=(ii jj kk)
+conflicts=(ll mm nn)
+replaces=(ll mm nn)
+provides=(oo=1.0)
+
+image=base:v2.1
+source=("https://example.org/toltec/${pkgnames[0]}/release-${pkgver%-*}.zip")
+sha256sums=(SKIP)
+
+build() {
+    echo "Build function"
+}
+
+package() {
+    echo "Package function"
+}
+"""
+            )
+
+        package = parse_recipe(rec_path)["rmall"].packages["dependencies"]
+
+        self.assertEqual(package.name, "dependencies")
+        self.assertEqual(
+            package.installdepends,
+            {
+                Dependency(DependencyKind.HOST, "aa"),
+                Dependency(DependencyKind.HOST, "bb"),
+                Dependency(
+                    DependencyKind.HOST,
+                    "cc",
+                    VersionComparator.EQUAL,
+                    Version(0, "0.1", "0"),
+                ),
+                Dependency(
+                    DependencyKind.HOST,
+                    "dd",
+                    VersionComparator.GREATER_THAN_OR_EQUAL,
+                    Version(0, "2.0", "0"),
+                ),
+                Dependency(
+                    DependencyKind.HOST,
+                    "ee",
+                    VersionComparator.GREATER_THAN_OR_EQUAL,
+                    Version(0, "1.4", "0"),
+                ),
+                Dependency(
+                    DependencyKind.HOST,
+                    "ee",
+                    VersionComparator.LOWER_THAN,
+                    Version(0, "2.0", "0"),
+                ),
+            },
+        )
+        self.assertEqual(
+            package.recommends,
+            {
+                Dependency(DependencyKind.HOST, "ff"),
+                Dependency(DependencyKind.HOST, "gg"),
+                Dependency(DependencyKind.HOST, "hh"),
+            },
+        )
+        self.assertEqual(
+            package.optdepends,
+            {
+                Dependency(DependencyKind.HOST, "ii"),
+                Dependency(DependencyKind.HOST, "jj"),
+                Dependency(DependencyKind.HOST, "kk"),
+            },
+        )
+        self.assertEqual(
+            package.conflicts,
+            {
+                Dependency(DependencyKind.HOST, "ll"),
+                Dependency(DependencyKind.HOST, "mm"),
+                Dependency(DependencyKind.HOST, "nn"),
+            },
+        )
+        self.assertEqual(
+            package.replaces,
+            {
+                Dependency(DependencyKind.HOST, "ll"),
+                Dependency(DependencyKind.HOST, "mm"),
+                Dependency(DependencyKind.HOST, "nn"),
+            },
+        )
+        self.assertEqual(
+            package.provides,
+            {
+                Dependency(
+                    DependencyKind.HOST,
+                    "oo",
+                    VersionComparator.EQUAL,
+                    Version(0, "1.0", "0"),
+                ),
+            },
+        )
+        self.assertEqual(
+            package.control_fields(),
+            """\
+Package: dependencies
+Description: Test for package dependency declarations
+Homepage: https://example.org/toltec/dependencies
+Version: 42.0-1
+Section: test
+Maintainer: None <none@example.org>
+License: MIT
+Architecture: rmall
+Depends: aa, bb, cc (= 0.1), dd (>= 2.0), ee (<< 2.0), ee (>= 1.4)
+Recommends: ff, gg, hh
+Suggests: ii, jj, kk
+Conflicts: ll, mm, nn
+Replaces: ll, mm, nn
+Provides: oo (= 1.0)
 """,
         )
 
@@ -319,8 +463,11 @@ declare -- url=https://example.org/toltec/pkg/pkg1
 declare -- section=first
 declare -- license=MIT
 declare -a installdepends=([0]=dep)
+declare -a recommends=()
+declare -a optdepends=()
 declare -a conflicts=()
 declare -a replaces=()
+declare -a provides=()
 declare -- _upver=4.3.2
 
 
@@ -364,8 +511,11 @@ declare -- url=https://example.org/toltec/pkg/pkg2
 declare -- section=second
 declare -- license=MIT
 declare -a installdepends=([0]=dep)
+declare -a recommends=()
+declare -a optdepends=()
 declare -a conflicts=()
 declare -a replaces=()
+declare -a provides=()
 declare -- _upver=4.3.2
 
 
@@ -410,8 +560,11 @@ declare -- url=https://example.org/toltec/pkg/pkg3
 declare -- section=third
 declare -- license=GPL-3.0
 declare -a installdepends=([0]=dep [1]=other-dep)
+declare -a recommends=()
+declare -a optdepends=()
 declare -a conflicts=()
 declare -a replaces=()
+declare -a provides=()
 declare -- _upver=4.3.2
 
 
@@ -570,8 +723,11 @@ declare -- url=https://example.org/test-archs
 declare -- section=math
 declare -- license=GPL-3.0-or-later
 declare -a installdepends=([0]=some-package)
+declare -a recommends=()
+declare -a optdepends=()
 declare -a conflicts=()
 declare -a replaces=()
+declare -a provides=()
 
 _configure() {
 
@@ -602,8 +758,11 @@ declare -- url=https://example.org/test-archs
 declare -- section=math
 declare -- license=GPL-3.0-or-later
 declare -a installdepends=([0]=some-package)
+declare -a recommends=()
+declare -a optdepends=()
 declare -a conflicts=()
 declare -a replaces=()
+declare -a provides=()
 
 _configure() {
 
@@ -656,8 +815,11 @@ declare -- url=https://example.org/test-archs
 declare -- section=math
 declare -- license=GPL-3.0-or-later
 declare -a installdepends=([0]=some-package)
+declare -a recommends=()
+declare -a optdepends=()
 declare -a conflicts=()
 declare -a replaces=()
+declare -a provides=()
 
 _configure() {
 
@@ -688,8 +850,11 @@ declare -- url=https://example.org/test-archs
 declare -- section=math
 declare -- license=GPL-3.0-or-later
 declare -a installdepends=([0]=some-package)
+declare -a recommends=()
+declare -a optdepends=()
 declare -a conflicts=()
 declare -a replaces=()
+declare -a provides=()
 
 _configure() {
 
@@ -794,8 +959,11 @@ declare -- url=https://example.org/test-archs-rm2
 declare -- section=math-rm2
 declare -- license=MIT
 declare -a installdepends=([0]=some-package [1]=rm2-only-dep)
+declare -a recommends=()
+declare -a optdepends=()
 declare -a conflicts=()
 declare -a replaces=()
+declare -a provides=()
 
 _configure() {
 
@@ -826,8 +994,11 @@ declare -- url=https://example.org/test-archs-rm2
 declare -- section=math-rm2
 declare -- license=MIT
 declare -a installdepends=([0]=some-package [1]=rm2-only-dep)
+declare -a recommends=()
+declare -a optdepends=()
 declare -a conflicts=()
 declare -a replaces=()
+declare -a provides=()
 
 _configure() {
 
@@ -883,8 +1054,11 @@ declare -- url=https://example.org/test-archs-rm2
 declare -- section=math-rm2
 declare -- license=MIT
 declare -a installdepends=([0]=some-package [1]=rm2-only-dep)
+declare -a recommends=()
+declare -a optdepends=()
 declare -a conflicts=()
 declare -a replaces=()
+declare -a provides=()
 
 _configure() {
 
@@ -915,8 +1089,11 @@ declare -- url=https://example.org/test-archs-rm2
 declare -- section=math-rm2
 declare -- license=MIT
 declare -a installdepends=([0]=some-package [1]=rm2-only-dep)
+declare -a recommends=()
+declare -a optdepends=()
 declare -a conflicts=()
 declare -a replaces=()
+declare -a provides=()
 
 _configure() {
 
