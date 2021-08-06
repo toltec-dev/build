@@ -1,8 +1,10 @@
 # Copyright (c) 2021 The Toltec Contributors
 # SPDX-License-Identifier: MIT
 
+import os
 from os import path
 import unittest
+from tempfile import TemporaryDirectory
 from datetime import datetime, timezone
 from toltec import parse_recipe
 from toltec.recipe import Package, Recipe, Source
@@ -11,11 +13,41 @@ from toltec.version import Version, Dependency, DependencyKind
 
 class TestParser(unittest.TestCase):
     def setUp(self) -> None:
-        self.dir = path.dirname(path.realpath(__file__))
-        self.fixtures_dir = path.join(self.dir, "..", "fixtures")
+        self.dir_handle = TemporaryDirectory()
+        self.dir = self.dir_handle.name
+
+    def tearDown(self) -> None:
+        self.dir = None
+        self.dir_handle.cleanup()
 
     def test_basic_recipe(self) -> None:
-        rec_path = path.join(self.fixtures_dir, "basic-recipe")
+        rec_path = path.join(self.dir, "basic-recipe")
+        os.makedirs(rec_path)
+
+        with open(path.join(rec_path, "package"), "w") as rec_def_file:
+            rec_def_file.write("""
+pkgnames=(basic-recipe)
+pkgdesc="A simple test for recipe parsing"
+url=https://example.org/toltec/basic-recipe
+pkgver=42.0-1
+timestamp=2021-07-31T20:44Z
+section="test"
+maintainer="None <none@example.org>"
+license=MIT
+
+image=base:v2.1
+source=("https://example.org/toltec/${pkgnames[0]}/release-${pkgver%-*}.zip")
+sha256sums=(SKIP)
+
+build() {
+    echo "Build function"
+}
+
+package() {
+    echo "Package function"
+}
+""")
+
         recipes = parse_recipe(rec_path)
 
         self.assertEqual(list(recipes.keys()), ["rmall"])
@@ -133,7 +165,65 @@ Architecture: rmall
         )
 
     def test_split_packages(self):
-        rec_path = path.join(self.fixtures_dir, "split-packages")
+        rec_path = path.join(self.dir, "split-packages")
+        os.makedirs(rec_path)
+
+        with open(path.join(rec_path, "package"), "w") as rec_def_file:
+            rec_def_file.write("""
+pkgnames=(pkg1 pkg2 pkg3)
+timestamp=2021-08-01T10:27Z
+maintainer="None <none@example.org>"
+installdepends=(dep)
+pkgver=5:4.3.2-1
+license=MIT
+
+image=base:v2.1
+_upver="${pkgver%-*}"
+_upver="${_upver#*:}"
+source=("https://example.org/toltec/pkg/release-$_upver.zip")
+sha256sums=(SKIP)
+
+prepare() {
+    echo "Prepare function"
+}
+
+build() {
+    echo "Build function"
+}
+
+pkg1() {
+    pkgdesc="First package"
+    url="https://example.org/toltec/pkg/$pkgname"
+    section="first"
+
+    package() {
+        echo "First package function"
+    }
+}
+
+pkg2() {
+    pkgdesc="Second package"
+    url="https://example.org/toltec/pkg/$pkgname"
+    section="second"
+
+    package() {
+        echo "Second package function"
+    }
+}
+
+pkg3() {
+    pkgdesc="Third package"
+    url="https://example.org/toltec/pkg/$pkgname"
+    section="third"
+    license=GPL-3.0
+    installdepends+=(other-dep)
+
+    package() {
+        echo "Third package function"
+    }
+}
+""")
+
         recipes = parse_recipe(rec_path)
         self.assertEqual(list(recipes.keys()), ["rmall"])
         recipe = recipes["rmall"]
@@ -325,7 +415,66 @@ declare -- _upver=4.3.2
         )
 
     def test_split_archs(self):
-        rec_path = path.join(self.fixtures_dir, "split-archs")
+        rec_path = path.join(self.dir, "split-archs")
+        os.makedirs(rec_path)
+
+        with open(path.join(rec_path, "package"), "w") as rec_def_file:
+            rec_def_file.write("""
+pkgnames=(test-archs-part1 test-archs-part2)
+pkgdesc="Dummy package for testing the arch separation feature"
+url=https://example.org/test-archs
+url_rm2=https://example.org/test-archs-rm2
+archs=(rm1 rm2)
+pkgver_rm1=0.0.0-1
+pkgver_rm2=0.0.0-2
+timestamp=2020-08-20T12:28Z
+section="math"
+section_rm2="math-rm2"
+maintainer="Mattéo Delabre <spam@delab.re>"
+maintainer_rm2="None <none@example.com>"
+license=GPL-3.0-or-later
+license_rm2=MIT
+installdepends=(some-package)
+installdepends_rm2=(rm2-only-dep)
+
+image=qt:v1.1
+image_rm2=qt:v1.3
+
+build() {
+    echo "Building for $arch"
+}
+
+_configure() {
+    echo "This package was built for $arch"
+}
+
+test-archs-part1() {
+    pkgdesc="$arch $pkgname - test arch separation"
+
+    package() {
+        echo "Package part 1"
+    }
+
+    configure() {
+        echo "This is $pkgname"
+        _configure
+    }
+}
+
+test-archs-part2() {
+    pkgdesc="$arch $pkgname - test arch separation"
+
+    package() {
+        echo "Package part 2"
+    }
+
+    configure() {
+        echo "This is $pkgname"
+        _configure
+    }
+}
+""")
+
         recipes = parse_recipe(rec_path)
         self.assertEqual(list(recipes.keys()), ["rm1", "rm2"])
 
