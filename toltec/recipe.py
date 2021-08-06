@@ -19,6 +19,18 @@ from .version import Version, Dependency
 class RecipeError(Exception):
     """Raised when a recipe contains an error."""
 
+    def __init__(self, path: str, message: str):
+        super().__init__()
+        self.path = path
+        self.message = message
+
+    def __repr__(self) -> str:
+        return f"RecipeError(path={repr(self.path)}, \
+message={repr(self.message)})"
+
+    def __str__(self) -> str:
+        return f"{self.path}: {self.message}"
+
 
 # Set of variations of the same recipes that target different architectures
 RecipeBundle = Dict[str, "Recipe"]

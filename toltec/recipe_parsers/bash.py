@@ -6,7 +6,13 @@ from itertools import product
 from typing import Any, Dict, Generator, Iterable, Optional, Tuple
 import os
 import dateutil.parser
-from ..version import Version, Dependency, DependencyKind
+from ..version import (
+    Version,
+    InvalidVersionError,
+    Dependency,
+    InvalidDependencyError,
+    DependencyKind,
+)
 from .. import bash
 from ..recipe import RecipeBundle, Recipe, Package, RecipeError, Source
 
@@ -24,7 +30,7 @@ def parse(path: str) -> RecipeBundle:
         variables, functions = bash.get_declarations(definition)
 
         for (arch, variables, functions) in _instantiate_arch(
-            variables, functions
+            path, variables, functions
         ):
             result[arch] = _parse_recipe(path, variables, functions)
 
@@ -32,17 +38,19 @@ def parse(path: str) -> RecipeBundle:
 
 
 def _instantiate_arch(
+    path: str,
     variables: bash.Variables,
     functions: bash.Functions,
 ) -> Generator[Tuple[str, bash.Variables, bash.Functions], None, None]:
     """
     Instantiate a recipe definition for each supported architecture.
 
+    :param path: path to the directory containing the recipe definition
     :param variables: Bash variables defined in the recipe
     :param functions: Bash functions defined in the recipe
     :returns: instantiated variables and functions
     """
-    archs = _pop_field_indexed(variables, "archs", ["rmall"])
+    archs = _pop_field_indexed(path, variables, "archs", ["rmall"])
     assert archs is not None
 
     for arch in archs:
@@ -78,8 +86,9 @@ def _instantiate_arch(
                 if isinstance(normal_value, str):
                     if not isinstance(value, str):
                         raise RecipeError(
-                            f"The '{name}' field is declared several \
-times with different types"
+                            path,
+                            f"Field '{name}' was declared several times with \
+different types",
                         )
 
                     loc_vars[name] = value
@@ -87,8 +96,9 @@ times with different types"
                 if isinstance(normal_value, list):
                     if not isinstance(value, list):
                         raise RecipeError(
-                            f"The '{name}' field is declared several \
-times with different types"
+                            path,
+                            f"Field '{name}' was declared several times with \
+different types",
                         )
 
                     normal_value.extend(value)
@@ -114,32 +124,33 @@ def _parse_recipe(  # pylint: disable=too-many-locals, disable=too-many-statemen
     attrs["path"] = path
     raw_vars: bash.Variables = {}
 
-    flags = raw_vars["flags"] = _pop_field_indexed(variables, "flags", [])
+    flags = raw_vars["flags"] = _pop_field_indexed(path, variables, "flags", [])
     attrs["flags"] = [flag or "" for flag in flags]
 
-    timestamp_str = _pop_field_string(variables, "timestamp")
+    timestamp_str = _pop_field_string(path, variables, "timestamp")
     raw_vars["timestamp"] = timestamp_str
 
     try:
         attrs["timestamp"] = dateutil.parser.isoparse(timestamp_str)
     except ValueError as err:
         raise RecipeError(
-            "Field 'timestamp' does not contain a valid ISO-8601 date"
+            path, "Field 'timestamp' does not contain a valid ISO-8601 date"
         ) from err
 
-    sources = _pop_field_indexed(variables, "source", [])
+    sources = _pop_field_indexed(path, variables, "source", [])
     raw_vars["source"] = sources
 
-    sha256sums = _pop_field_indexed(variables, "sha256sums", [])
+    sha256sums = _pop_field_indexed(path, variables, "sha256sums", [])
     raw_vars["sha256sums"] = sha256sums
 
-    noextract = _pop_field_indexed(variables, "noextract", [])
+    noextract = _pop_field_indexed(path, variables, "noextract", [])
     raw_vars["noextract"] = noextract
 
     if len(sources) != len(sha256sums):
         raise RecipeError(
+            path,
             f"Expected the same number of sources and checksums, got \
-{len(sources)} source(s) and {len(sha256sums)} checksum(s)"
+{len(sources)} source(s) and {len(sha256sums)} checksum(s)",
         )
 
     attrs["sources"] = set()
@@ -153,38 +164,42 @@ def _parse_recipe(  # pylint: disable=too-many-locals, disable=too-many-statemen
             )
         )
 
-    makedepends_raw = _pop_field_indexed(variables, "makedepends", [])
+    makedepends_raw = _pop_field_indexed(path, variables, "makedepends", [])
     raw_vars["makedepends"] = makedepends_raw
     attrs["makedepends"] = {
         Dependency.parse(dep or "") for dep in makedepends_raw
     }
 
     attrs["maintainer"] = raw_vars["maintainer"] = _pop_field_string(
-        variables, "maintainer"
+        path, variables, "maintainer"
     )
 
     attrs["image"] = raw_vars["image"] = _pop_field_string(
-        variables, "image", ""
+        path, variables, "image", ""
     )
 
-    attrs["arch"] = raw_vars["arch"] = _pop_field_string(variables, "arch")
+    attrs["arch"] = raw_vars["arch"] = _pop_field_string(
+        path, variables, "arch"
+    )
 
     if attrs["image"] and "build" not in functions:
         raise RecipeError(
+            path,
             "Missing build() function for a recipe which declares a \
-build image"
+build image",
         )
 
     if not attrs["image"] and "build" in functions:
         raise RecipeError(
+            path,
             "Missing image declaration for a recipe which has a \
-build() step"
+build() step",
         )
 
     attrs["prepare"] = functions.pop("prepare", "")
     attrs["build"] = functions.pop("build", "")
 
-    pkgnames = _pop_field_indexed(variables, "pkgnames")
+    pkgnames = _pop_field_indexed(path, variables, "pkgnames")
     attrs["packages"] = {}
 
     result = Recipe(**attrs)
@@ -209,8 +224,9 @@ build() step"
 
             if sub_pkg_name not in functions:
                 raise RecipeError(
-                    "Missing required function {sub_pkg_name}() for \
-corresponding package"
+                    path,
+                    f"Missing required function {sub_pkg_name}() for \
+corresponding package",
                 )
 
             pkg_def = functions.pop(sub_pkg_name)
@@ -264,40 +280,54 @@ def _parse_package(  # pylint: disable=too-many-locals, disable=too-many-stateme
 
     # Parse fields
     attrs["name"] = raw_vars["pkgname"] = _pop_field_string(
-        variables, "pkgname"
+        parent.path, variables, "pkgname"
     )
 
-    pkgver_str = _pop_field_string(variables, "pkgver")
+    pkgver_str = _pop_field_string(parent.path, variables, "pkgver")
     raw_vars["pkgver"] = pkgver_str
-    attrs["version"] = Version.parse(pkgver_str)
+
+    try:
+        attrs["version"] = Version.parse(pkgver_str)
+    except InvalidVersionError as err:
+        raise RecipeError(
+            parent.path, f"Failed to parse version number: '{pkgver_str}'"
+        ) from err
 
     attrs["desc"] = raw_vars["pkgdesc"] = _pop_field_string(
-        variables, "pkgdesc"
+        parent.path, variables, "pkgdesc"
     )
 
-    attrs["url"] = raw_vars["url"] = _pop_field_string(variables, "url")
+    attrs["url"] = raw_vars["url"] = _pop_field_string(
+        parent.path, variables, "url"
+    )
 
     attrs["section"] = raw_vars["section"] = _pop_field_string(
-        variables, "section"
+        parent.path, variables, "section"
     )
 
     attrs["license"] = raw_vars["license"] = _pop_field_string(
-        variables, "license"
+        parent.path, variables, "license"
     )
 
     for field in ("installdepends", "conflicts", "replaces"):
-        field_raw = _pop_field_indexed(variables, field, [])
+        field_raw = _pop_field_indexed(parent.path, variables, field, [])
         raw_vars[field] = field_raw
         attrs[field] = set()
 
         for dep_raw in field_raw:
             assert dep_raw is not None
-            dep = Dependency.parse(dep_raw)
+            try:
+                dep = Dependency.parse(dep_raw)
+            except (InvalidVersionError, InvalidDependencyError) as err:
+                raise RecipeError(
+                    parent.path, f"Failed to parse dependency: '{dep_raw}'"
+                ) from err
 
             if dep.kind != DependencyKind.HOST:
                 raise RecipeError(
+                    parent.path,
                     f"Only host packages are supported in the \
-'{field}' field"
+'{field}' field, cannot add dependency '{dep}'",
                 )
 
             attrs[field].add(dep)
@@ -315,17 +345,17 @@ def _parse_package(  # pylint: disable=too-many-locals, disable=too-many-stateme
     for var_name in variables.keys():
         if not var_name.startswith("_"):
             raise RecipeError(
-                f"Unknown field '{var_name}' in the definition of \
-package {attrs['name']} — make sure to prefix the names of \
-custom fields with '_'"
+                parent.path,
+                f"Unknown field '{var_name}', make sure to prefix the names \
+of custom fields with '_'",
             )
 
     for func_name in functions.keys():
         if not func_name.startswith("_"):
             raise RecipeError(
-                f"Unknown function '{func_name}' in the definition of \
-package {attrs['name']} — make sure to prefix the names of \
-custom functions with '_'"
+                parent.path,
+                f"Unknown function '{func_name}', make sure to prefix the \
+names of custom functions with '_'",
             )
 
     result = Package(**attrs)
@@ -347,40 +377,46 @@ custom functions with '_'"
 
 
 def _pop_field_string(
-    variables: bash.Variables, name: str, default: Optional[str] = None
+    path: str,
+    variables: bash.Variables,
+    name: str,
+    default: Optional[str] = None,
 ) -> str:
     if name not in variables:
         if default is None:
-            raise RecipeError(f"Missing required field {name}")
+            raise RecipeError(path, f"Missing required field '{name}'")
         return default
 
     value = variables.pop(name)
 
     if not isinstance(value, str):
         raise RecipeError(
-            f"Field {name} must be a string, \
-got {type(variables[name]).__name__}"
+            path,
+            f"Field '{name}' must be a string, \
+got a {type(value).__name__}",
         )
 
     return value
 
 
 def _pop_field_indexed(
+    path: str,
     variables: bash.Variables,
     name: str,
     default: Optional[bash.IndexedArray] = None,
 ) -> bash.IndexedArray:
     if name not in variables:
         if default is None:
-            raise RecipeError(f"Missing required field '{name}'")
+            raise RecipeError(path, f"Missing required field '{name}'")
         return default
 
     value = variables.pop(name)
 
     if not isinstance(value, list):
         raise RecipeError(
+            path,
             f"Field '{name}' must be an indexed array, \
-got {type(variables[name]).__name__}"
+got a {type(value).__name__}",
         )
 
     return value

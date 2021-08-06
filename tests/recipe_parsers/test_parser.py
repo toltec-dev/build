@@ -2,12 +2,13 @@
 # SPDX-License-Identifier: MIT
 
 import os
+import re
 from os import path
 import unittest
 from tempfile import TemporaryDirectory
 from datetime import datetime, timezone
 from toltec import parse_recipe
-from toltec.recipe import Package, Recipe, Source
+from toltec.recipe import Package, Recipe, Source, RecipeError
 from toltec.version import Version, Dependency, DependencyKind
 
 
@@ -25,7 +26,8 @@ class TestParser(unittest.TestCase):
         os.makedirs(rec_path)
 
         with open(path.join(rec_path, "package"), "w") as rec_def_file:
-            rec_def_file.write("""
+            rec_def_file.write(
+                """
 pkgnames=(basic-recipe)
 pkgdesc="A simple test for recipe parsing"
 url=https://example.org/toltec/basic-recipe
@@ -46,7 +48,8 @@ build() {
 package() {
     echo "Package function"
 }
-""")
+"""
+            )
 
         recipes = parse_recipe(rec_path)
 
@@ -169,7 +172,8 @@ Architecture: rmall
         os.makedirs(rec_path)
 
         with open(path.join(rec_path, "package"), "w") as rec_def_file:
-            rec_def_file.write("""
+            rec_def_file.write(
+                """
 pkgnames=(pkg1 pkg2 pkg3)
 timestamp=2021-08-01T10:27Z
 maintainer="None <none@example.org>"
@@ -222,7 +226,8 @@ pkg3() {
         echo "Third package function"
     }
 }
-""")
+"""
+            )
 
         recipes = parse_recipe(rec_path)
         self.assertEqual(list(recipes.keys()), ["rmall"])
@@ -419,7 +424,8 @@ declare -- _upver=4.3.2
         os.makedirs(rec_path)
 
         with open(path.join(rec_path, "package"), "w") as rec_def_file:
-            rec_def_file.write("""
+            rec_def_file.write(
+                """
 pkgnames=(test-archs-part1 test-archs-part2)
 pkgdesc="Dummy package for testing the arch separation feature"
 url=https://example.org/test-archs
@@ -473,7 +479,8 @@ test-archs-part2() {
         _configure
     }
 }
-""")
+"""
+            )
 
         recipes = parse_recipe(rec_path)
         self.assertEqual(list(recipes.keys()), ["rm1", "rm2"])
@@ -925,3 +932,460 @@ _configure() {
         self.assertEqual(part2.postupgrade, "")
         self.assertEqual(part2.preremove, "")
         self.assertEqual(part2.postremove, "")
+
+    def test_errors(self) -> None:
+        rec_path = path.join(self.dir, "errors")
+        os.makedirs(rec_path)
+
+        with open(path.join(rec_path, "package"), "w") as rec_def_file:
+            rec_def_file.write(
+                """
+pkgnames=(missing-timestamp)
+pkgdesc="A simple test for recipe parsing"
+url=https://example.org/toltec/basic-recipe
+pkgver=42.0-1
+section="test"
+maintainer="None <none@example.org>"
+license=MIT
+
+image=base:v2.1
+source=("https://example.org/toltec/${pkgnames[0]}/release-${pkgver%-*}.zip")
+sha256sums=(SKIP)
+
+build() {
+    echo "Build function"
+}
+
+package() {
+    echo "Package function"
+}
+"""
+            )
+
+        with self.assertRaisesRegex(
+            RecipeError,
+            re.escape(f"{rec_path}: Missing required field 'timestamp'"),
+        ):
+            parse_recipe(rec_path)
+
+        with open(path.join(rec_path, "package"), "w") as rec_def_file:
+            rec_def_file.write(
+                """
+pkgnames=(wrong-type)
+pkgdesc="A simple test for recipe parsing"
+url=https://example.org/toltec/basic-recipe
+pkgver=(42.0-1)
+timestamp=2021-07-31T20:44Z
+section="test"
+maintainer="None <none@example.org>"
+license=MIT
+
+image=base:v2.1
+source=("https://example.org/toltec/${pkgnames[0]}/release-${pkgver%-*}.zip")
+sha256sums=(SKIP)
+
+build() {
+    echo "Build function"
+}
+
+package() {
+    echo "Package function"
+}
+"""
+            )
+
+        with self.assertRaisesRegex(
+            RecipeError,
+            re.escape(
+                f"{rec_path}: Field 'pkgver' must be a string, got a \
+list"
+            ),
+        ):
+            parse_recipe(rec_path)
+
+        with open(path.join(rec_path, "package"), "w") as rec_def_file:
+            rec_def_file.write(
+                """
+pkgnames=(wrong-type-2)
+pkgdesc="A simple test for recipe parsing"
+url=https://example.org/toltec/basic-recipe
+pkgver=42.0-1
+timestamp=2021-07-31T20:44Z
+section="test"
+maintainer="None <none@example.org>"
+license=MIT
+
+image=base:v2.1
+source="https://example.org/toltec/${pkgnames[0]}/release-${pkgver%-*}.zip"
+sha256sums=SKIP
+
+build() {
+    echo "Build function"
+}
+
+package() {
+    echo "Package function"
+}
+"""
+            )
+
+        with self.assertRaisesRegex(
+            RecipeError,
+            re.escape(
+                f"{rec_path}: Field 'source' must be an indexed array, \
+got a str"
+            ),
+        ):
+            parse_recipe(rec_path)
+
+        with open(path.join(rec_path, "package"), "w") as rec_def_file:
+            rec_def_file.write(
+                """
+pkgnames=(missing-image)
+pkgdesc="A simple test for recipe parsing"
+url=https://example.org/toltec/basic-recipe
+pkgver=42.0-1
+timestamp=2021-07-31T20:44Z
+section="test"
+maintainer="None <none@example.org>"
+license=MIT
+
+source=("https://example.org/toltec/${pkgnames[0]}/release-${pkgver%-*}.zip")
+sha256sums=(SKIP)
+
+build() {
+    echo "Build function"
+}
+
+package() {
+    echo "Package function"
+}
+"""
+            )
+
+        with self.assertRaisesRegex(
+            RecipeError,
+            re.escape(
+                f"{rec_path}: Missing image declaration for a recipe \
+which has a build() step"
+            ),
+        ):
+            parse_recipe(rec_path)
+
+        with open(path.join(rec_path, "package"), "w") as rec_def_file:
+            rec_def_file.write(
+                """
+pkgnames=(missing-build)
+pkgdesc="A simple test for recipe parsing"
+url=https://example.org/toltec/basic-recipe
+pkgver=42.0-1
+timestamp=2021-07-31T20:44Z
+section="test"
+maintainer="None <none@example.org>"
+license=MIT
+
+image=base:v2.1
+source=("https://example.org/toltec/${pkgnames[0]}/release-${pkgver%-*}.zip")
+sha256sums=(SKIP)
+
+package() {
+    echo "Package function"
+}
+"""
+            )
+
+        with self.assertRaisesRegex(
+            RecipeError,
+            re.escape(
+                f"{rec_path}: Missing build() function for a recipe \
+which declares a build image"
+            ),
+        ):
+            parse_recipe(rec_path)
+
+        with open(path.join(rec_path, "package"), "w") as rec_def_file:
+            rec_def_file.write(
+                """
+pkgnames=(missing-pkg-func-1 missing-pkg-func-2)
+pkgdesc="A simple test for recipe parsing"
+url=https://example.org/toltec/basic-recipe
+pkgver=42.0-1
+timestamp=2021-07-31T20:44Z
+section="test"
+maintainer="None <none@example.org>"
+license=MIT
+
+image=base:v2.1
+source=("https://example.org/toltec/${pkgnames[0]}/release-${pkgver%-*}.zip")
+sha256sums=(SKIP)
+
+build() {
+    echo "Build function"
+}
+
+missing-pkg-func-1() {
+    package() {
+        echo "Package function"
+    }
+}
+"""
+            )
+
+        with self.assertRaisesRegex(
+            RecipeError,
+            re.escape(
+                f"{rec_path}: Missing required function \
+missing-pkg-func-2() for corresponding package"
+            ),
+        ):
+            parse_recipe(rec_path)
+
+        with open(path.join(rec_path, "package"), "w") as rec_def_file:
+            rec_def_file.write(
+                """
+pkgnames=(wrong-timestamp-format)
+pkgdesc="A simple test for recipe parsing"
+url=https://example.org/toltec/basic-recipe
+pkgver=42.0-1
+timestamp=2021/07/31T20:44Z
+section="test"
+maintainer="None <none@example.org>"
+license=MIT
+
+image=base:v2.1
+source=("https://example.org/toltec/${pkgnames[0]}/release-${pkgver%-*}.zip")
+sha256sums=(SKIP)
+
+build() {
+    echo "Build function"
+}
+
+package() {
+    echo "Package function"
+}
+"""
+            )
+
+        with self.assertRaisesRegex(
+            RecipeError,
+            re.escape(
+                f"{rec_path}: Field 'timestamp' does not contain a \
+valid ISO-8601 date"
+            ),
+        ):
+            parse_recipe(rec_path)
+
+        with open(path.join(rec_path, "package"), "w") as rec_def_file:
+            rec_def_file.write(
+                """
+pkgnames=(mismatched-sources-checksums)
+pkgdesc="A simple test for recipe parsing"
+url=https://example.org/toltec/basic-recipe
+pkgver=42.0-1
+timestamp=2021-07-31T20:44Z
+section="test"
+maintainer="None <none@example.org>"
+license=MIT
+
+image=base:v2.1
+source=("https://example.org/toltec/${pkgnames[0]}/release-${pkgver%-*}.zip")
+sha256sums=(SKIP SKIP SKIP)
+
+build() {
+    echo "Build function"
+}
+
+package() {
+    echo "Package function"
+}
+"""
+            )
+
+        with self.assertRaisesRegex(
+            RecipeError,
+            re.escape(
+                f"{rec_path}: Expected the same number of sources and \
+checksums, got 1 source(s) and 3 checksum(s)"
+            ),
+        ):
+            parse_recipe(rec_path)
+
+        with open(path.join(rec_path, "package"), "w") as rec_def_file:
+            rec_def_file.write(
+                """
+pkgnames=(invalid-version)
+pkgdesc="A simple test for recipe parsing"
+url=https://example.org/toltec/basic-recipe
+pkgver=//42.0//-1
+timestamp=2021-07-31T20:44Z
+section="test"
+maintainer="None <none@example.org>"
+license=MIT
+
+image=base:v2.1
+source=("https://example.org/toltec/${pkgnames[0]}/release-${pkgver%-*}.zip")
+sha256sums=(SKIP)
+
+build() {
+    echo "Build function"
+}
+
+package() {
+    echo "Package function"
+}
+"""
+            )
+
+        with self.assertRaisesRegex(
+            RecipeError,
+            re.escape(
+                f"{rec_path}: Failed to parse version number: '//42.0//-1'"
+            ),
+        ):
+            parse_recipe(rec_path)
+
+        with open(path.join(rec_path, "package"), "w") as rec_def_file:
+            rec_def_file.write(
+                """
+pkgnames=(invalid-dependency)
+pkgdesc="A simple test for recipe parsing"
+url=https://example.org/toltec/basic-recipe
+pkgver=42.0-1
+timestamp=2021-07-31T20:44Z
+section="test"
+maintainer="None <none@example.org>"
+license=MIT
+installdepends=("package (=0.1.2-5)")
+
+image=base:v2.1
+source=("https://example.org/toltec/${pkgnames[0]}/release-${pkgver%-*}.zip")
+sha256sums=(SKIP)
+
+build() {
+    echo "Build function"
+}
+
+package() {
+    echo "Package function"
+}
+"""
+            )
+
+        with self.assertRaisesRegex(
+            RecipeError,
+            re.escape(
+                f"{rec_path}: Failed to parse dependency: 'package (=0.1.2-5)'"
+            ),
+        ):
+            parse_recipe(rec_path)
+
+        with open(path.join(rec_path, "package"), "w") as rec_def_file:
+            rec_def_file.write(
+                """
+pkgnames=(invalid-dep-type)
+pkgdesc="A simple test for recipe parsing"
+url=https://example.org/toltec/basic-recipe
+pkgver=42.0-1
+timestamp=2021-07-31T20:44Z
+section="test"
+maintainer="None <none@example.org>"
+license=MIT
+installdepends=(build:package)
+
+image=base:v2.1
+source=("https://example.org/toltec/${pkgnames[0]}/release-${pkgver%-*}.zip")
+sha256sums=(SKIP)
+
+build() {
+    echo "Build function"
+}
+
+package() {
+    echo "Package function"
+}
+"""
+            )
+
+        with self.assertRaisesRegex(
+            RecipeError,
+            re.escape(
+                f"{rec_path}: Only host packages are supported in the \
+'installdepends' field, cannot add dependency 'build:package'"
+            ),
+        ):
+            parse_recipe(rec_path)
+
+        with open(path.join(rec_path, "package"), "w") as rec_def_file:
+            rec_def_file.write(
+                """
+pkgnames=(unknown-fields)
+pkgdesc="A simple test for recipe parsing"
+url=https://example.org/toltec/basic-recipe
+pkgver=42.0-1
+timestamp=2021-07-31T20:44Z
+section="test"
+maintainer="None <none@example.org>"
+license=MIT
+customfield=4
+
+image=base:v2.1
+source=("https://example.org/toltec/${pkgnames[0]}/release-${pkgver%-*}.zip")
+sha256sums=(SKIP)
+
+build() {
+    echo "Build function"
+}
+
+package() {
+    echo "Package function"
+}
+"""
+            )
+
+        with self.assertRaisesRegex(
+            RecipeError,
+            re.escape(
+                f"{rec_path}: Unknown field 'customfield', make sure to \
+prefix the names of custom fields with '_'"
+            ),
+        ):
+            parse_recipe(rec_path)
+
+        with open(path.join(rec_path, "package"), "w") as rec_def_file:
+            rec_def_file.write(
+                """
+pkgnames=(unknown-funcs)
+pkgdesc="A simple test for recipe parsing"
+url=https://example.org/toltec/basic-recipe
+pkgver=42.0-1
+timestamp=2021-07-31T20:44Z
+section="test"
+maintainer="None <none@example.org>"
+license=MIT
+
+image=base:v2.1
+source=("https://example.org/toltec/${pkgnames[0]}/release-${pkgver%-*}.zip")
+sha256sums=(SKIP)
+
+customfunc() {
+    echo "Custom function"
+}
+
+build() {
+    echo "Build function"
+}
+
+package() {
+    echo "Package function"
+}
+"""
+            )
+
+        with self.assertRaisesRegex(
+            RecipeError,
+            re.escape(
+                f"{rec_path}: Unknown function 'customfunc', make sure to \
+prefix the names of custom functions with '_'"
+            ),
+        ):
+            parse_recipe(rec_path)
