@@ -67,22 +67,22 @@ args = parser.parse_args()
 logging.basicConfig(format=LOGGING_FORMAT, level=args.verbose)
 
 recipe_bundle = parse_recipe(args.recipe_dir)
-builder = Builder(args.work_dir, args.dist_dir)
 
-build_matrix: Optional[Dict[str, Optional[List[Package]]]] = None
+with Builder(args.work_dir, args.dist_dir) as builder:
+    build_matrix: Optional[Dict[str, Optional[List[Package]]]] = None
 
-if args.arch_name or args.package_name:
-    build_matrix = {}
+    if args.arch_name or args.package_name:
+        build_matrix = {}
 
-    for arch, recipes in recipe_bundle.items():
-        if args.package_name:
-            build_matrix[arch] = [
-                recipes.packages[pkg_name] for pkg_name in args.package_name
-            ]
-        else:
-            build_matrix[arch] = None
+        for arch, recipes in recipe_bundle.items():
+            if args.package_name:
+                build_matrix[arch] = [
+                    recipes.packages[pkg_name] for pkg_name in args.package_name
+                ]
+            else:
+                build_matrix[arch] = None
 
-if not builder.make(recipe_bundle, build_matrix):
-    sys.exit(1)
+    if not builder.make(recipe_bundle, build_matrix):
+        sys.exit(1)
 
 make_index(args.dist_dir)

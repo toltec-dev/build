@@ -8,7 +8,9 @@ from typing import (
     List,
     Mapping,
     Optional,
+    Type,
 )
+from types import TracebackType
 from collections import deque
 import re
 import os
@@ -54,6 +56,17 @@ class Builder:  # pylint: disable=too-few-public-methods
 Please check that the service is running and that you have the necessary \
 permissions."
             ) from err
+
+    def __enter__(self) -> "Builder":
+        return self
+
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> None:
+        self.docker.close()
 
     def make(
         self,
