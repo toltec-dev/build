@@ -4,7 +4,6 @@
 """Build packages from the recipe in [DIR]."""
 
 import argparse
-import logging
 import os
 import sys
 from typing import Dict, List, Optional
@@ -12,7 +11,7 @@ from toltec import parse_recipe
 from toltec.builder import Builder
 from toltec.recipe import Package
 from toltec.repo import make_index
-from toltec.util import argparse_add_verbose, LOGGING_FORMAT
+from toltec import util
 
 parser = argparse.ArgumentParser(description=__doc__)
 
@@ -61,10 +60,10 @@ parser.add_argument(
     can be repeated)""",
 )
 
-argparse_add_verbose(parser)
-
+util.argparse_add_verbose(parser)
+util.argparse_add_warning(parser)
 args = parser.parse_args()
-logging.basicConfig(format=LOGGING_FORMAT, level=args.verbose)
+util.setup_logging(args)
 
 recipe_bundle = parse_recipe(args.recipe_dir)
 

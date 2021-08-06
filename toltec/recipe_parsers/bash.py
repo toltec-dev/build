@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Parse recipes from Bash files."""
 
+import warnings
 from itertools import product
 from typing import Any, Dict, Generator, Iterable, Optional, Tuple
 import os
@@ -14,7 +15,14 @@ from ..version import (
     DependencyKind,
 )
 from .. import bash
-from ..recipe import RecipeBundle, Recipe, Package, RecipeError, Source
+from ..recipe import (
+    RecipeBundle,
+    Recipe,
+    Package,
+    RecipeError,
+    RecipeWarning,
+    Source,
+)
 
 
 def parse(path: str) -> RecipeBundle:
@@ -344,18 +352,18 @@ def _parse_package(  # pylint: disable=too-many-locals, disable=too-many-stateme
     # Check that remaining variables and functions are prefixed
     for var_name in variables.keys():
         if not var_name.startswith("_"):
-            raise RecipeError(
-                parent.path,
-                f"Unknown field '{var_name}', make sure to prefix the names \
-of custom fields with '_'",
+            warnings.warn(
+                f"{parent.path}: Unknown field '{var_name}'. Make sure to \
+prefix the names of custom fields with '_'",
+                RecipeWarning,
             )
 
     for func_name in functions.keys():
         if not func_name.startswith("_"):
-            raise RecipeError(
-                parent.path,
-                f"Unknown function '{func_name}', make sure to prefix the \
-names of custom functions with '_'",
+            warnings.warn(
+                f"{parent.path}: Unknown function '{func_name}'. Make sure to \
+prefix the names of custom functions with '_'",
+                RecipeWarning,
             )
 
     result = Package(**attrs)

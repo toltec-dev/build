@@ -10,17 +10,8 @@ import itertools
 import os
 import shutil
 import sys
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    IO,
-    List,
-    Optional,
-    Protocol,
-    Sequence,
-    TypeVar,
-)
+from typing import Any, Callable, Dict, IO, List, Optional, Type, Union
+import warnings
 import zipfile
 import tarfile
 
@@ -32,7 +23,7 @@ LOGGING_FORMAT = "[%(levelname)8s] %(name)s: %(message)s"
 
 
 def argparse_add_verbose(parser: argparse.ArgumentParser) -> None:
-    """Add an option for setting the verbosity level."""
+    """Add a CLI option for setting the verbosity level."""
     parser.add_argument(
         "-v",
         "--verbose",
@@ -41,6 +32,41 @@ def argparse_add_verbose(parser: argparse.ArgumentParser) -> None:
         default=logging.INFO,
         help="show debugging information",
     )
+
+
+def argparse_add_warning(parser: argparse.ArgumentParser) -> None:
+    """Add a CLI option for controlling warnings."""
+    parser.add_argument(
+        "-W",
+        "--warnings",
+        choices=("default", "error", "ignore"),
+        default="default",
+        help="""control warnings. 'default' sends warnings to stderr and
+removes duplicate warnings, 'ignore' silences any warning, and 'error' turns
+warnings into exceptions""",
+    )
+
+
+def setup_logging(args: argparse.Namespace) -> None:
+    """Configure logging and warning control based on passed CLI flags."""
+    if hasattr(args, "verbose"):
+        logging.basicConfig(format=LOGGING_FORMAT, level=args.verbose)
+
+    def formatwarning(
+        message: Union[str, Warning],
+        category: Type[Warning],
+        filename: str,
+        lineno: int,
+        line: Optional[str] = None,
+    ) -> str:
+        del filename, lineno, line
+        return f"[{category.__name__}] {message}"
+
+    warnings.formatwarning = formatwarning
+    logging.captureWarnings(True)
+
+    if hasattr(args, "warnings"):
+        warnings.simplefilter(args.warnings)
 
 
 def file_sha256(path: str) -> str:
@@ -300,33 +326,3 @@ def list_tree(root: str) -> List[str]:
             result.append(os.path.join(directory, file))
 
     return sorted(result)
-
-
-# See <https://github.com/python/typing/issues/760>
-class SupportsLessThan(Protocol):  # pylint:disable=too-few-public-methods
-    """Types that support the less-than operator."""
-
-    def __lt__(self, other: Any) -> bool:
-        ...
-
-
-Key = TypeVar("Key", bound=SupportsLessThan)
-Value = TypeVar("Value")
-
-
-def group_by(
-    in_seq: Sequence[Value], key_fn: Callable[[Value], Key]
-) -> Dict[Key, List[Value]]:
-    """
-    Group elements of a list.
-
-    :param in_seq: list of elements to group
-    :param key_fn: mapping of each element onto a group
-    :returns: dictionary of groups
-    """
-    return dict(
-        (key, list(group))
-        for key, group in itertools.groupby(
-            sorted(in_seq, key=key_fn), key=key_fn
-        )
-    )

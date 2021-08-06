@@ -17,7 +17,7 @@ from .version import Version, Dependency
 
 
 class RecipeError(Exception):
-    """Raised when a recipe contains an error."""
+    """Raised when a recipe definition is malformed."""
 
     def __init__(self, path: str, message: str):
         super().__init__()
@@ -30,6 +30,10 @@ message={repr(self.message)})"
 
     def __str__(self) -> str:
         return f"{self.path}: {self.message}"
+
+
+class RecipeWarning(Warning):
+    """Raised for less serious issues in recipe definitions."""
 
 
 # Set of variations of the same recipes that target different architectures

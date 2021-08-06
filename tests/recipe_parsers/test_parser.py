@@ -8,7 +8,7 @@ import unittest
 from tempfile import TemporaryDirectory
 from datetime import datetime, timezone
 from toltec import parse_recipe
-from toltec.recipe import Package, Recipe, Source, RecipeError
+from toltec.recipe import Package, Recipe, Source, RecipeError, RecipeWarning
 from toltec.version import Version, Dependency, DependencyKind
 
 
@@ -1342,10 +1342,10 @@ package() {
 """
             )
 
-        with self.assertRaisesRegex(
-            RecipeError,
+        with self.assertWarnsRegex(
+            RecipeWarning,
             re.escape(
-                f"{rec_path}: Unknown field 'customfield', make sure to \
+                f"{rec_path}: Unknown field 'customfield'. Make sure to \
 prefix the names of custom fields with '_'"
             ),
         ):
@@ -1381,10 +1381,10 @@ package() {
 """
             )
 
-        with self.assertRaisesRegex(
-            RecipeError,
+        with self.assertWarnsRegex(
+            RecipeWarning,
             re.escape(
-                f"{rec_path}: Unknown function 'customfunc', make sure to \
+                f"{rec_path}: Unknown function 'customfunc'. Make sure to \
 prefix the names of custom functions with '_'"
             ),
         ):
