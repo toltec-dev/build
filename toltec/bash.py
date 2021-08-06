@@ -108,17 +108,13 @@ declare -p
         )
     )
 
-    if declarations_subshell.returncode == 2:
-        raise ScriptError(
-            f"Bash syntax error\n\
-{declarations_subshell.stderr.decode()}"
-        )
+    errors = declarations_subshell.stderr.decode()
 
-    if declarations_subshell.returncode != 0:
-        raise ScriptError(
-            f"Bash error\n\
-{declarations_subshell.stderr.decode()}"
-        )
+    if declarations_subshell.returncode == 2 or "syntax error" in errors:
+        raise ScriptError(f"Bash syntax error\n{errors}")
+
+    if declarations_subshell.returncode != 0 or errors:
+        raise ScriptError(f"Bash error\n{errors}")
 
     declarations = declarations_subshell.stdout.decode()
 

@@ -8,6 +8,7 @@ import unittest
 from tempfile import TemporaryDirectory
 from datetime import datetime, timezone
 from toltec import parse_recipe
+from toltec.bash import ScriptError
 from toltec.recipe import Package, Recipe, Source, RecipeError, RecipeWarning
 from toltec.version import (
     Version,
@@ -1117,9 +1118,25 @@ _configure() {
         with open(path.join(rec_path, "package"), "w") as rec_def_file:
             rec_def_file.write(
                 """
+pkgnames=(bash-syntax-error
+"""
+            )
+
+        with self.assertRaisesRegex(
+            ScriptError,
+            re.escape(
+                """Bash error
+bash: line 2: unexpected EOF while looking for matching `)'"""
+            ),
+        ):
+            parse_recipe(rec_path)
+
+        with open(path.join(rec_path, "package"), "w") as rec_def_file:
+            rec_def_file.write(
+                """
 pkgnames=(missing-timestamp)
 pkgdesc="A simple test for recipe parsing"
-url=https://example.org/toltec/basic-recipe
+url=https://example.org/toltec/missing-timestamp
 pkgver=42.0-1
 section="test"
 maintainer="None <none@example.org>"
@@ -1150,7 +1167,7 @@ package() {
                 """
 pkgnames=(wrong-type)
 pkgdesc="A simple test for recipe parsing"
-url=https://example.org/toltec/basic-recipe
+url=https://example.org/toltec/wrong-type
 pkgver=(42.0-1)
 timestamp=2021-07-31T20:44Z
 section="test"
@@ -1185,7 +1202,7 @@ list"
                 """
 pkgnames=(wrong-type-2)
 pkgdesc="A simple test for recipe parsing"
-url=https://example.org/toltec/basic-recipe
+url=https://example.org/toltec/wrong-type-2
 pkgver=42.0-1
 timestamp=2021-07-31T20:44Z
 section="test"
@@ -1220,7 +1237,7 @@ got a str"
                 """
 pkgnames=(missing-image)
 pkgdesc="A simple test for recipe parsing"
-url=https://example.org/toltec/basic-recipe
+url=https://example.org/toltec/missing-image
 pkgver=42.0-1
 timestamp=2021-07-31T20:44Z
 section="test"
@@ -1254,7 +1271,7 @@ which has a build() step"
                 """
 pkgnames=(missing-build)
 pkgdesc="A simple test for recipe parsing"
-url=https://example.org/toltec/basic-recipe
+url=https://example.org/toltec/missing-build
 pkgver=42.0-1
 timestamp=2021-07-31T20:44Z
 section="test"
@@ -1285,7 +1302,7 @@ which declares a build image"
                 """
 pkgnames=(missing-pkg-func-1 missing-pkg-func-2)
 pkgdesc="A simple test for recipe parsing"
-url=https://example.org/toltec/basic-recipe
+url=https://example.org/toltec/missing-pkg-func
 pkgver=42.0-1
 timestamp=2021-07-31T20:44Z
 section="test"
@@ -1322,7 +1339,7 @@ missing-pkg-func-2() for corresponding package"
                 """
 pkgnames=(wrong-timestamp-format)
 pkgdesc="A simple test for recipe parsing"
-url=https://example.org/toltec/basic-recipe
+url=https://example.org/toltec/wrong-timestamp-format
 pkgver=42.0-1
 timestamp=2021/07/31T20:44Z
 section="test"
@@ -1357,7 +1374,7 @@ valid ISO-8601 date"
                 """
 pkgnames=(mismatched-sources-checksums)
 pkgdesc="A simple test for recipe parsing"
-url=https://example.org/toltec/basic-recipe
+url=https://example.org/toltec/mismatched-sources-checksums
 pkgver=42.0-1
 timestamp=2021-07-31T20:44Z
 section="test"
@@ -1392,7 +1409,7 @@ checksums, got 1 source(s) and 3 checksum(s)"
                 """
 pkgnames=(invalid-version)
 pkgdesc="A simple test for recipe parsing"
-url=https://example.org/toltec/basic-recipe
+url=https://example.org/toltec/invalid-version
 pkgver=//42.0//-1
 timestamp=2021-07-31T20:44Z
 section="test"
@@ -1426,7 +1443,7 @@ package() {
                 """
 pkgnames=(invalid-dependency)
 pkgdesc="A simple test for recipe parsing"
-url=https://example.org/toltec/basic-recipe
+url=https://example.org/toltec/invalid-dependency
 pkgver=42.0-1
 timestamp=2021-07-31T20:44Z
 section="test"
@@ -1461,7 +1478,7 @@ package() {
                 """
 pkgnames=(invalid-dep-type)
 pkgdesc="A simple test for recipe parsing"
-url=https://example.org/toltec/basic-recipe
+url=https://example.org/toltec/invalid-dep-type
 pkgver=42.0-1
 timestamp=2021-07-31T20:44Z
 section="test"
@@ -1497,7 +1514,7 @@ package() {
                 """
 pkgnames=(unknown-fields)
 pkgdesc="A simple test for recipe parsing"
-url=https://example.org/toltec/basic-recipe
+url=https://example.org/toltec/unknown-fields
 pkgver=42.0-1
 timestamp=2021-07-31T20:44Z
 section="test"
@@ -1533,7 +1550,7 @@ prefix the names of custom fields with '_'"
                 """
 pkgnames=(unknown-funcs)
 pkgdesc="A simple test for recipe parsing"
-url=https://example.org/toltec/basic-recipe
+url=https://example.org/toltec/unknown-funcs
 pkgver=42.0-1
 timestamp=2021-07-31T20:44Z
 section="test"
