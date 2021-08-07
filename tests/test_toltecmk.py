@@ -28,7 +28,9 @@ class TestBuild(unittest.TestCase):
 
             result = subprocess.run(
                 [
-                    "./toltecmk",
+                    "python3",
+                    "-m",
+                    "toltec",
                     "--work-dir",
                     work_dir,
                     "--dist-dir",

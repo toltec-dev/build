@@ -27,16 +27,16 @@ test:
 	python -m unittest
 
 format:
-	black --line-length 80 --check --diff toltec tests toltecmk
+	black --line-length 80 --check --diff toltec tests
 
 format-fix:
-	black --line-length 80 toltec tests toltecmk
+	black --line-length 80 toltec tests
 
 lint:
 	@echo "==> Typechecking files"
-	mypy --disallow-untyped-defs toltec toltecmk
+	mypy --disallow-untyped-defs toltec
 	@echo "==> Linting files"
-	pylint toltec toltecmk
+	pylint toltec
 
 .PHONY: \
     help \

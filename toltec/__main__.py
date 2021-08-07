@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # Copyright (c) 2021 The Toltec Contributors
 # SPDX-License-Identifier: MIT
 """Build packages from the recipe in [DIR]."""
@@ -14,7 +13,10 @@ from toltec.recipe import Package
 from toltec.repo import make_index
 from toltec import util
 
-parser = argparse.ArgumentParser(description=__doc__)
+parser = argparse.ArgumentParser(
+    prog="toltecmk",
+    description=__doc__,
+)
 
 parser.add_argument(
     "recipe_dir",
