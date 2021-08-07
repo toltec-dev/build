@@ -5,7 +5,9 @@
 import os
 import shlex
 import subprocess
-from typing import Dict, Generator, List, Optional, Tuple, Union
+import logging
+from collections import deque
+from typing import Deque, Dict, Generator, List, Optional, Tuple, Union
 from docker.client import DockerClient
 
 AssociativeArray = Dict[str, str]
@@ -411,3 +413,46 @@ def run_script_in_container(
             raise ScriptError(f"Script exited with code {result['StatusCode']}")
     finally:
         container.remove()
+
+
+def pipe_logs(
+    logger: logging.Logger,
+    logs: LogGenerator,
+    prefix: str = "",
+    max_lines_on_fail: int = 50,
+) -> None:
+    """
+    Pipe logs from a script to the debug output of a Python logger.
+
+    Print the last :param:`max_lines_on_fail` log lines to the error output in
+    case a ScriptError is caught.
+
+    :param logs: generator of log lines
+    :param prefix: log prefix
+    :param max_lines_on_fail: number of context lines to print
+        in non-debug mode
+    """
+    log_buffer: Deque[str] = deque()
+
+    try:
+        for line in logs:
+            if logger.getEffectiveLevel() <= logging.DEBUG:
+                logger.debug("%s%s", prefix + ": ", line)
+            else:
+                if len(log_buffer) == max_lines_on_fail:
+                    log_buffer.popleft()
+                log_buffer.append(line)
+    except ScriptError as err:
+        if len(log_buffer) > 0:
+            logger.info(
+                "Only showing up to %s lines of context. "
+                "Use --verbose for the full output.",
+                max_lines_on_fail,
+            )
+            for line in log_buffer:
+                logger.error("%s%s", prefix + ": ", line)
+
+        if prefix:
+            logger.error("%s failed", prefix)
+
+        raise err

@@ -3,15 +3,8 @@
 """Build recipes and create packages."""
 
 import shutil
-from typing import (
-    Deque,
-    List,
-    Mapping,
-    Optional,
-    Type,
-)
+from typing import List, Mapping, Optional, Type
 from types import TracebackType
-from collections import deque
 import re
 import os
 import logging
@@ -68,6 +61,64 @@ permissions."
     ) -> None:
         self.docker.close()
 
+    @util.hook
+    def post_parse(self, recipe: Recipe) -> None:
+        """
+        Triggered after a recipe has been parsed, before executing it.
+
+        :param recipe: recipe object, may be modified by hook listeners
+        """
+
+    @util.hook
+    def post_fetch_sources(self, recipe: Recipe, src_dir: str) -> None:
+        """
+        Triggered after the sources of a recipe have been fetched, before
+        running the prepare() script.
+
+        :param recipe: recipe object
+        :param src_dir: folder in which sources have been extracted
+        """
+
+    @util.hook
+    def post_prepare(self, recipe: Recipe, src_dir: str) -> None:
+        """
+        Triggered after the prepare() script of a recipe has been run.
+
+        :param recipe: recipe object
+        :param src_dir: folder in which sources have been prepared
+        """
+
+    @util.hook
+    def post_build(self, recipe: Recipe, src_dir: str) -> None:
+        """
+        Triggered after a recipe’s artifacts have been built.
+
+        :param recipe: recipe object
+        :param src_dir: folder in which artifacts have been built
+        """
+
+    @util.hook
+    def post_package(
+        self, package: Package, src_dir: str, pkg_dir: str
+    ) -> None:
+        """
+        Triggered after part of the artifacts from a build have been moved
+        in place to the packaging directory.
+
+        :param package: package object
+        :param src_dir: folder in which artifacts have been built
+        :param pkg_dir: folder in which artifacts to package have been moved
+        """
+
+    @util.hook
+    def post_archive(self, package: Package, ar_path: str) -> None:
+        """
+        Triggered after a package archive has been generated.
+
+        :param package: package object
+        :param archive: path to the final package archive
+        """
+
     def make(
         self,
         recipe_bundle: RecipeBundle,
@@ -112,15 +163,22 @@ or [k]eep it (not recommended)?",
         build_dir: str,
         packages: Optional[List[Package]] = None,
     ) -> bool:
+        self.post_parse(recipe)
+
         src_dir = os.path.join(build_dir, "src")
         os.makedirs(src_dir, exist_ok=True)
+
         self._fetch_sources(recipe, src_dir)
+        self.post_fetch_sources(recipe, src_dir)
+
         self._prepare(recipe, src_dir)
+        self.post_prepare(recipe, src_dir)
+
+        self._build(recipe, src_dir)
+        self.post_build(recipe, src_dir)
 
         base_pkg_dir = os.path.join(build_dir, "pkg")
         os.makedirs(base_pkg_dir, exist_ok=True)
-
-        self._build(recipe, src_dir)
 
         for package in (
             packages if packages is not None else recipe.packages.values()
@@ -129,7 +187,14 @@ or [k]eep it (not recommended)?",
             os.makedirs(pkg_dir, exist_ok=True)
 
             self._package(package, src_dir, pkg_dir)
-            self._archive(package, pkg_dir)
+            self.post_package(package, src_dir, pkg_dir)
+
+            ar_path = os.path.join(self.dist_dir, package.filename())
+            ar_dir = os.path.dirname(ar_path)
+            os.makedirs(ar_dir, exist_ok=True)
+
+            self._archive(package, pkg_dir, ar_path)
+            self.post_archive(package, ar_path)
 
         return True
 
@@ -179,7 +244,8 @@ source file '{source.url}', got {req.status_code}"
                         local_path,
                     )
 
-    def _prepare(self, recipe: Recipe, src_dir: str) -> None:
+    @staticmethod
+    def _prepare(recipe: Recipe, src_dir: str) -> None:
         """Prepare source files before building."""
         if not recipe.prepare:
             logger.debug("Skipping prepare (nothing to do)")
@@ -192,8 +258,7 @@ source file '{source.url}', got {req.status_code}"
                 "srcdir": src_dir,
             },
         )
-
-        self._print_logs(logs, "prepare()")
+        bash.pipe_logs(logger, logs, "prepare()")
 
     def _build(self, recipe: Recipe, src_dir: str) -> None:
         """Build artifacts for a recipe."""
@@ -294,10 +359,10 @@ source file '{source.url}', got {req.status_code}"
                 )
             ),
         )
+        bash.pipe_logs(logger, logs, "build()")
 
-        self._print_logs(logs, "build()")
-
-    def _package(self, package: Package, src_dir: str, pkg_dir: str) -> None:
+    @staticmethod
+    def _package(package: Package, src_dir: str, pkg_dir: str) -> None:
         """Make a package from a recipe’s build artifacts."""
         logger.info("Packaging build artifacts for %s", package.name)
         logs = bash.run_script(
@@ -308,7 +373,7 @@ source file '{source.url}', got {req.status_code}"
             },
         )
 
-        self._print_logs(logs, "package()")
+        bash.pipe_logs(logger, logs, "package()")
         logger.debug("Resulting tree:")
 
         for filename in util.list_tree(pkg_dir):
@@ -319,12 +384,10 @@ source file '{source.url}', got {req.status_code}"
                 ),
             )
 
-    def _archive(self, package: Package, pkg_dir: str) -> None:
+    @staticmethod
+    def _archive(package: Package, pkg_dir: str, ar_path: str) -> None:
         """Create an archive for a package."""
         logger.info("Creating archive %s", package.filename())
-        ar_path = os.path.join(self.dist_dir, package.filename())
-        ar_dir = os.path.dirname(ar_path)
-        os.makedirs(ar_dir, exist_ok=True)
 
         # Convert install scripts to Debian format
         scripts = {}
@@ -414,42 +477,3 @@ source file '{source.url}', got {req.status_code}"
 
         # Set fixed atime and mtime for the resulting archive
         os.utime(ar_path, (epoch, epoch))
-
-    @staticmethod
-    def _print_logs(
-        logs: bash.LogGenerator,
-        function_name: str = None,
-        max_lines_on_fail: int = 50,
-    ) -> None:
-        """
-        Print logs to the debug output or buffer and print the last n log lines
-        if a ScriptError is caught.
-
-        :param logs: generator of log lines
-        :param function_name: calling function name
-        :param max_lines_on_fail: number of context lines to print
-            in non-debug mode
-        """
-        log_buffer: Deque[str] = deque()
-        try:
-            for line in logs:
-                if logger.getEffectiveLevel() <= logging.DEBUG:
-                    logger.debug("%s: %s", function_name, line)
-                else:
-                    if len(log_buffer) == max_lines_on_fail:
-                        log_buffer.popleft()
-                    log_buffer.append(line)
-        except bash.ScriptError as err:
-            if len(log_buffer) > 0:
-                logger.info(
-                    "Only showing up to %s lines of context. "
-                    "Use --verbose for the full output.",
-                    max_lines_on_fail,
-                )
-                for line in log_buffer:
-                    logger.error("%s: %s", function_name, line)
-
-            if function_name:
-                logger.error("%s failed", function_name)
-
-            raise err

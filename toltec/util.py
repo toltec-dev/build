@@ -7,10 +7,22 @@ from collections.abc import Iterable
 import hashlib
 import logging
 import itertools
+import functools
 import os
 import shutil
 import sys
-from typing import Any, Callable, Dict, IO, List, Optional, Type, Union
+from typing import (
+    Any,
+    Callable,
+    cast,
+    Dict,
+    IO,
+    List,
+    Optional,
+    Protocol,
+    Type,
+    Union,
+)
 import warnings
 import zipfile
 import tarfile
@@ -326,3 +338,55 @@ def list_tree(root: str) -> List[str]:
             result.append(os.path.join(directory, file))
 
     return sorted(result)
+
+
+HookTrigger = Callable[..., None]
+HookListener = Callable[..., None]
+
+
+class Hook(Protocol):  # pylint:disable=too-few-public-methods
+    """Protocol for hooks."""
+
+    @staticmethod
+    def register(new_listener: HookListener) -> None:
+        """Add a new listener to this hook."""
+        ...
+
+    # Invoke all listeners for this hook
+    __call__: HookTrigger
+
+
+def hook(func: HookTrigger) -> Hook:
+    """
+    Decorator for turning a function into a hook.
+
+    :param func: empty function to declare as a hook
+    :returns: usable hook
+    """
+    listeners: List[HookListener] = []
+
+    def register(new_listener: HookListener) -> None:
+        listeners.append(new_listener)
+
+    @functools.wraps(func)
+    def call(*args: Any, **kwargs: Any) -> None:
+        for call_listener in listeners:
+            call_listener(*args, **kwargs)
+
+    setattr(call, "register", register)
+    return cast(Hook, call)
+
+
+def listener(target_hook: Hook) -> Callable[[HookListener], HookListener]:
+    """
+    Decorator for subscribing a function to a hook.
+
+    :param target_hook: hook to add this function as a listener of
+    :returns: identity
+    """
+
+    def decorator(new_listener: HookListener) -> HookListener:
+        target_hook.register(new_listener)
+        return new_listener
+
+    return decorator
