@@ -6,6 +6,11 @@ Testing:
 
     test            Run tests.
 
+Building:
+
+    build           Build the Python package.
+    clean           Remove build artifacts.
+
 Formatting:
 
     format          Check that the source code formatting follows
@@ -22,6 +27,12 @@ export USAGE
 
 help:
 	@echo "$$USAGE"
+
+build:
+	python -m build
+
+clean:
+	rm -rf toltec.egg-info dist
 
 test:
 	python -m unittest
@@ -40,6 +51,8 @@ lint:
 
 .PHONY: \
     help \
+    build \
+    clean \
     test \
     format \
     format-fix \

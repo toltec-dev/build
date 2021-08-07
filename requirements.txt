@@ -1,4 +1,5 @@
 astroid==2.6.5
+build==0.6.0.post1
 certifi==2021.5.30
 charset-normalizer==2.0.4
 docker==5.0.0
@@ -8,11 +9,16 @@ lazy-object-proxy==1.6.0
 mccabe==0.6.1
 mypy==0.910
 mypy-extensions==0.4.3
+packaging==21.0
+pep517==0.11.0
+pyelftools==0.27
 pylint==2.9.6
+pyparsing==2.4.7
 python-dateutil==2.8.2
 requests==2.26.0
 six==1.16.0
 toml==0.10.2
+tomli==1.2.1
 types-python-dateutil==0.1.4
 types-requests==2.25.1
 typing-extensions==3.10.0.0

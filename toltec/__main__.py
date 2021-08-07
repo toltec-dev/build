@@ -13,102 +13,105 @@ from toltec.recipe import Package
 from toltec.repo import make_index
 from toltec import util
 
-parser = argparse.ArgumentParser(
-    prog="toltecmk",
-    description=__doc__,
-)
 
-parser.add_argument(
-    "recipe_dir",
-    metavar="DIR",
-    nargs="?",
-    default=os.getcwd(),
-    help="""path to a directory containing the recipe to build
-    (default: current directory)""",
-)
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
 
-parser.add_argument(
-    "-w",
-    "--work-dir",
-    metavar="DIR",
-    default=os.path.join(os.getcwd(), "build"),
-    help="""path to a directory used for building the package
-    (default: [current directory]/build)""",
-)
+    parser.add_argument(
+        "recipe_dir",
+        metavar="DIR",
+        nargs="?",
+        default=os.getcwd(),
+        help="""path to a directory containing the recipe to build
+        (default: current directory)""",
+    )
 
-parser.add_argument(
-    "-d",
-    "--dist-dir",
-    metavar="DIR",
-    default=os.path.join(os.getcwd(), "dist"),
-    help="""path to a directory where built packages are stored
-    (default: [current directory]/dist)""",
-)
+    parser.add_argument(
+        "-w",
+        "--work-dir",
+        metavar="DIR",
+        default=os.path.join(os.getcwd(), "build"),
+        help="""path to a directory used for building the package
+        (default: [current directory]/build)""",
+    )
 
-parser.add_argument(
-    "-a",
-    "--arch-name",
-    metavar="ARCHNAME",
-    action="append",
-    help="""only build for the given architecture (can
-    be repeated)""",
-)
+    parser.add_argument(
+        "-d",
+        "--dist-dir",
+        metavar="DIR",
+        default=os.path.join(os.getcwd(), "dist"),
+        help="""path to a directory where built packages are stored
+        (default: [current directory]/dist)""",
+    )
 
-parser.add_argument(
-    "-p",
-    "--package-name",
-    metavar="PACKAGENAME",
-    action="append",
-    help="""list of packages to build (default: all packages from the recipe,
-    can be repeated)""",
-)
+    parser.add_argument(
+        "-a",
+        "--arch-name",
+        metavar="ARCHNAME",
+        action="append",
+        help="""only build for the given architecture (can
+        be repeated)""",
+    )
 
-parser.add_argument(
-    "-H",
-    "--hook",
-    metavar="PATH",
-    action="append",
-    help="""name or path to a Python module that registers listeners for build
-    hooks (can be repeated) - if a path is passed, it must start with either
-    a dot or a slash""",
-)
+    parser.add_argument(
+        "-p",
+        "--package-name",
+        metavar="PACKAGENAME",
+        action="append",
+        help="""list of packages to build (default: all packages from the
+        recipe, can be repeated)""",
+    )
 
-util.argparse_add_verbose(parser)
-util.argparse_add_warning(parser)
-args = parser.parse_args()
-util.setup_logging(args)
+    parser.add_argument(
+        "-H",
+        "--hook",
+        metavar="PATH",
+        action="append",
+        help="""name or path to a Python module that registers listeners for
+        build hooks (can be repeated) - if a path is passed, it must start with
+        either a dot or a slash""",
+    )
 
-recipe_bundle = parse_recipe(args.recipe_dir)
+    util.argparse_add_verbose(parser)
+    util.argparse_add_warning(parser)
+    args = parser.parse_args()
+    util.setup_logging(args)
 
-with Builder(args.work_dir, args.dist_dir) as builder:
-    if args.hook:
-        for ident in args.hook:
-            if ident and ident[0] in (".", "/"):
-                spec = spec_from_file_location("toltec.hooks.user", ident)
-            else:
-                spec = find_spec(ident)
+    recipe_bundle = parse_recipe(args.recipe_dir)
 
-            if spec:
-                module = module_from_spec(spec)
-                spec.loader.exec_module(module)  # type: ignore
-                module.register(builder)  # type: ignore
-            else:
-                raise RuntimeError(f"Hook module '{ident}' couldn’t be loaded")
+    with Builder(args.work_dir, args.dist_dir) as builder:
+        if args.hook:
+            for ident in args.hook:
+                if ident and ident[0] in (".", "/"):
+                    spec = spec_from_file_location("toltec.hooks.user", ident)
+                else:
+                    spec = find_spec(ident)
 
-    build_matrix: Optional[Dict[str, Optional[List[Package]]]] = None
+                if spec:
+                    module = module_from_spec(spec)
+                    spec.loader.exec_module(module)  # type: ignore
+                    module.register(builder)  # type: ignore
+                else:
+                    raise RuntimeError(f"Hook module '{ident}' couldn’t be loaded")
 
-    if args.arch_name or args.package_name:
-        build_matrix = {}
+        build_matrix: Optional[Dict[str, Optional[List[Package]]]] = None
 
-        for arch, recipes in recipe_bundle.items():
-            if args.package_name:
-                build_matrix[arch] = [
-                    recipes.packages[pkg_name] for pkg_name in args.package_name
-                ]
-            else:
-                build_matrix[arch] = None
+        if args.arch_name or args.package_name:
+            build_matrix = {}
 
-    if not builder.make(recipe_bundle, build_matrix):
-        sys.exit(1)
+            for arch, recipes in recipe_bundle.items():
+                if args.package_name:
+                    build_matrix[arch] = [
+                        recipes.packages[pkg_name] for pkg_name in args.package_name
+                    ]
+                else:
+                    build_matrix[arch] = None
 
-make_index(args.dist_dir)
+        if not builder.make(recipe_bundle, build_matrix):
+            return 1
+
+    make_index(args.dist_dir)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
