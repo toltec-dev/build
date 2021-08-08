@@ -22,6 +22,7 @@ Linting:
 
     lint            Perform static analysis on the source code to find
                     erroneous constructs.
+    links           Check that all links in Markdown files are alive.
 endef
 export USAGE
 
@@ -49,6 +50,12 @@ lint:
 	@echo "==> Linting files"
 	pylint toltec
 
+links:
+	find . \
+	    -name "*.md" \
+	    -not -exec git check-ignore {} \; \
+	    -exec markdown-link-check {} \;
+
 .PHONY: \
     help \
     build \
@@ -56,4 +63,5 @@ lint:
     test \
     format \
     format-fix \
-    lint
+    lint \
+    links

@@ -1,0 +1,68 @@
+\tikzset{
+    pics/scroll/.style args={#1/#2/#3}{
+        code={
+            % Main shape
+            \path[pic actions]
+                % upper-left corner
+                (-#1/2, 0) -- ++(0, #2/2) arc (0:180:#3) arc (180:390:.6*#3)
+                (-#1/2, #2/2-.6*#3) -- ++(-#3*1.4, 0)
+                % upper-right corner
+                (-#1/2-#3, #2/2+#3) -- ++(#1, 0) arc (90:0:#3) -- ++(0, -#2+#3*.6)
+                % lower-left corner
+                (-#1/2, 0) -- ++(0, -#2/2) arc (180:360:#3) arc (0:210:.6*#3)
+                % lower side
+                (-#1/2+#3, -#2/2-#3) -- ++(#1, 0) arc (270:450:.8*#3) -- ++(-#1+#3*.3, 0)
+            ;
+            % Lines
+            \path[pic actions]
+                (-#1*.3, #2*.1) -- ++(#1*.6, 0)
+                (-#1*.3, #2*.0) -- ++(#1*.6, 0)
+                (-#1*.3, -#2*.1) -- ++(#1*.4, 0)
+            ;
+            % Contents
+            \node[\tikzpictextoptions] at (0, #2*.3) {\tikzpictext};
+        },
+    },
+    pics/files/.style args={#1/#2/#3 #4/#5}{
+        code={
+            % Main file edges
+            \draw[pic actions, rounded corners=2]
+                (#1/2-#3, #2/2) -- ++(-#1+#3, 0) -- ++(0, -#2) -- ++(#1, 0) -- ++(0, #2-#3);
+            % Main file fold
+            \draw[pic actions, line join=round]
+                (#1/2-#3, #2/2) -- ++(0, -#3) -- ++(#3, 0) -- cycle;
+            % Main file contents
+            \node[\tikzpictextoptions] {\tikzpictext};
+            % Lower files
+            \foreach \x in {1,...,#4}
+                \draw[pic actions, rounded corners=2]
+                    (-#1/2-#5*\x+#5, #2/2-#5-#5*\x+#5)
+                    -- ++(-#5, 0) -- ++(0, -#2) -- ++(#1, 0) -- ++(0, #5);
+        },
+    },
+    pics/box/.style args={#1/#2}{
+        code={
+            \begin{scope}[x={(-0.866cm,0.5cm)}, y={(0cm,1cm)}, z={(0.866cm,0.5cm)}]
+                % Outer strokes
+                \draw[pic actions, rounded corners=1]
+                    (-#1/2, -#2/2, -#1/2)
+                    -- ++(#1, 0, 0) -- ++(0, #2, 0) -- ++(0, 0, #1)
+                    -- ++(-#1, 0, 0) -- ++(0, -#2, 0) -- cycle
+                ;
+                % Inner strokes
+                \draw[pic actions]
+                    (-#1/2, #2/2, -#1/2) -- ++(#1, 0, 0)
+                    (-#1/2, #2/2, -#1/2) -- ++(0, -#2, 0)
+                    (-#1/2, #2/2, -#1/2) -- ++(0, 0, .375*#1) ++(0, 0, .25*#1) -- ++(0, 0, .375*#1)
+                ;
+                % Tape
+                \draw[pic actions, rounded corners=1]
+                    (#1/2, #2/2, .125*#1) -- ++(-#1, 0, 0) -- ++(0, -.5*#2, 0)
+                    -- ++(0, 0, -.25*#1) -- ++(0, .5*#2, 0) -- ++(#1, 0, 0)
+                ;
+                % Contents
+                \node[\tikzpictextoptions] at (0, -1.25) {\tikzpictext};
+            \end{scope}
+        },
+    },
+}

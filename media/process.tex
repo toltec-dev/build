@@ -1,0 +1,98 @@
+\documentclass[crop, tikz]{standalone}
+
+\usepackage{hyperref}
+\usepackage[default]{sourcesanspro}
+\usetikzlibrary{calc, positioning, shapes, arrows.meta, backgrounds}
+
+\input{pics.tex}
+
+\tikzset{
+    process step/.style={
+        draw, rectangle, rounded corners=2,
+        minimum width=3cm, align=center,
+        inner sep=12pt,
+    },
+    arrow/.style={->},
+    hook/.style={
+        anchor=west,
+        font=\itshape,
+        execute at begin node=Hook:\ ,
+    },
+    hook line/.style={dash pattern=on 6pt off 4pt},
+}
+
+\newcommand{\calls}[1]{\small\(\triangleright\)\ \ #1}
+
+\begin{document}
+\begin{tikzpicture}[>=stealth, very thick, node distance=1.5cm]
+    \pic[draw, pic text=\small Recipe]
+        {scroll=1.414213562/2/.15};
+
+    \node[process step] (parse) at (0, -3) {Parse recipe};
+    \draw[arrow] (0, -1.5) -- (parse);
+
+    \node[process step, below=of parse] (sources) {Fetch sources};
+    \draw[arrow] (parse) -- (sources);
+    \draw[hook line] ($(parse.south)!.5!(sources.north)$) -- ++(1, 0)
+        node[hook] {post\_parse};
+
+    \node[process step, below=of sources] (prepare) {
+        Prepare sources\\
+        \calls{prepare()}
+    };
+    \draw[arrow] (sources) -- (prepare);
+    \draw[hook line] ($(sources.south)!.5!(prepare.north)$) -- ++(1, 0)
+        node[hook] {post\_fetch\_sources};
+
+    \node[process step, below=of prepare] (build) {
+        Build artifacts\\
+        \calls{build()}
+    };
+    \draw[arrow] (prepare) -- (build);
+    \draw[hook line] ($(prepare.south)!.5!(build.north)$) -- ++(1, 0)
+        node[hook] {post\_prepare};
+
+    \foreach \i [evaluate=\i as \x using {(\i - 1) * 4cm}] in {0,1,2} {
+        \node[process step, xshift=\x, below=2cm of build] (package-\i) {
+            Copy artifacts\\
+            \calls{\href{https://google.com}{package()}}
+        };
+
+        \node[process step, below=of package-\i] (archive-\i) {Create archive};
+
+        \pic[draw] at ($(archive-\i.south)-(0, 2.5)$) {box=1/.71};
+    }
+
+    \draw (build.south) -- ++(0, -.5) coordinate (build-split);
+
+    \draw[arrow] (build-split) to[out=-90, in=60] (package-0);
+    \draw[arrow] (build-split) to (package-1);
+    \draw[arrow] (build-split) to[out=-90, in=120] (package-2);
+
+    \draw[arrow] (package-0) -- (archive-0);
+    \draw[arrow] (package-1) -- (archive-1);
+    \draw[arrow] (package-2) -- (archive-2);
+
+    \draw[arrow] (archive-0.south) -- ++(0, -1.25) coordinate (final-0);
+    \draw[arrow] (archive-1.south) -- ++(0, -1.25) coordinate (final-1);
+    \draw[arrow] (archive-2.south) -- ++(0, -1.25) coordinate (final-2);
+
+    \scoped[on background layer]{
+        \fill[white] ($(current bounding box.north east)+(3cm, 1cm)$)
+            rectangle ($(current bounding box.south west)-(3cm, 1cm)$);
+    }
+
+    \draw[hook line] (build-split) -- ++(1, 0)
+        node[hook] {post\_build};
+
+    \draw[hook line] ($(package-0.south)!.5!(archive-0.north)$)
+        -- ($(package-1.south)!.5!(archive-1.north)$)
+        -- ($(package-2.south)!.5!(archive-2.north)$)
+        -- ++(1, 0) node[hook] {post\_package};
+
+    \draw[hook line] ($(archive-0.south)!.5!(final-0)$)
+        -- ($(archive-1.south)!.5!(final-1)$)
+        -- ($(archive-2.south)!.5!(final-2)$)
+        -- ++(1, 0) node[hook] {post\_archive};
+\end{tikzpicture}
+\end{document}

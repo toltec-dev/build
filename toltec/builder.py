@@ -102,12 +102,12 @@ permissions."
         self, package: Package, src_dir: str, pkg_dir: str
     ) -> None:
         """
-        Triggered after part of the artifacts from a build have been moved
+        Triggered after part of the artifacts from a build have been copied
         in place to the packaging directory.
 
         :param package: package object
         :param src_dir: folder in which artifacts have been built
-        :param pkg_dir: folder in which artifacts to package have been moved
+        :param pkg_dir: folder in which artifacts to package have been copied
         """
 
     @util.hook
