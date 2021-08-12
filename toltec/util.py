@@ -19,7 +19,7 @@ from typing import (
     IO,
     List,
     Optional,
-    Protocol,
+#    Protocol,
     Type,
     Union,
 )
@@ -302,6 +302,8 @@ def check_directory(path: str, message: str) -> bool:
     try:
         os.mkdir(path)
     except FileExistsError:
+        if not os.listdir(path):
+            return True
         ans = query_user(
             message,
             default="c",
@@ -343,18 +345,15 @@ def list_tree(root: str) -> List[str]:
 HookTrigger = Callable[..., None]
 HookListener = Callable[..., None]
 
+# Protocol is not available in python 3.7 (Debian buster)
+Hook = Any
+# class Hook(Protocol):  # pylint:disable=too-few-public-methods
+#     """Protocol for hooks."""
 
-class Hook(Protocol):  # pylint:disable=too-few-public-methods
-    """Protocol for hooks."""
-
-    @staticmethod
-    def register(new_listener: HookListener) -> None:
-        """Add a new listener to this hook."""
-        ...
-
-    # Invoke all listeners for this hook
-    __call__: HookTrigger
-
+#     @staticmethod
+#     def register(new_listener: HookListener) -> None:
+#         """Add a new listener to this hook."""
+#         ...
 
 def hook(func: HookTrigger) -> Hook:
     """

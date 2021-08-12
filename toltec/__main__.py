@@ -45,6 +45,16 @@ def main():
     )
 
     parser.add_argument(
+        "-s",
+        "--source-dir",
+        metavar="DIR",
+        default=None,
+        help="""path to the source directory
+        (optional: when specified, a local build is performed instead of fetching 
+                   sources)""",
+    )
+
+    parser.add_argument(
         "-a",
         "--arch-name",
         metavar="ARCHNAME",
@@ -79,7 +89,7 @@ def main():
 
     recipe_bundle = parse_recipe(args.recipe_dir)
 
-    with Builder(args.work_dir, args.dist_dir) as builder:
+    with Builder(args.work_dir, args.dist_dir, args.source_dir) as builder:
         if args.hook:
             for ident in args.hook:
                 if ident and ident[0] in (".", "/"):

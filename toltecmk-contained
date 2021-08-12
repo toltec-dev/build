@@ -1,0 +1,59 @@
+#!/usr/bin/env python3
+# Copyright (c) 2021 The Toltec Contributors
+# SPDX-License-Identifier: MIT
+
+import argparse
+import os
+import subprocess
+from pathlib import Path
+
+from toltec import parse_recipe
+from toltecmk import make_argparser
+
+# Prefix for all Toltec Docker images
+IMAGE_PREFIX = "ghcr.io/toltec-dev/"
+
+args = make_argparser().parse_args()
+
+recipe_bundle = parse_recipe(args.recipe_dir)
+# Don't recipes in a bundle share most information?
+recipe = next(iter(recipe_bundle.values()))
+
+image = IMAGE_PREFIX + recipe.image
+
+toltecmk_dir = str(Path(__file__).resolve().parent)
+
+mounts = [ (args.recipe_dir, '/recipe'),
+           (args.work_dir,   '/build'),
+           (args.dist_dir,   '/pkg'),
+           (toltecmk_dir,    '/toltecmk'),
+          ]
+
+for m in mounts:
+    if not os.path.exists(m[0]):
+        os.makedirs(m[0])
+
+if args.source_dir:
+    mounts.append((args.source_dir, '/src'))
+
+cmd = ['podman', 'run', '-it', '--rm']
+for m in mounts:
+    cmd.append('-v')
+    cmd.append(':'.join(m))
+cmd.append(image)
+cmd += ['bash', '-c']
+# currently required by toltecmk and missing in images
+internal_cmd = []
+internal_cmd += ['apt update && apt install -yq python3-dateutil python3-requests && ']
+internal_cmd += ['/toltecmk/toltecmk',
+                 '-w', '/build',
+                 '-d', '/pkg',
+                 '/recipe']
+if args.source_dir: internal_cmd += ['-s', '/src']
+if args.arch_name: internal_cmd += ['-a', args.arch_name]
+if args.package_name: internal_cmd += ['-p', args.package_name]
+
+cmd.append(' '.join(internal_cmd))
+print(' '.join('"' + c + '"' if ' ' in c else c for c in cmd))
+subprocess.call(cmd)
+
