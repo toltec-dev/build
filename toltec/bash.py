@@ -400,6 +400,7 @@ def run_script_in_container(
             ),
         ],
         detach=True,
+        security_opt=["label=disable"],
     )
 
     try:
