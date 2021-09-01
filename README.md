@@ -9,7 +9,7 @@ It automates common tasks such as fetching sources, building artifacts in a repr
 **Disclaimer: This is beta-quality software. The recipe format may change at any time in future releases. If you use `toltecmk` in other projects, it is advised to pin to a specific version.**
 
 <p align="center">
-    <img src="media/overview.svg" alt="toltecmk input: recipe; output: packages. Fetches sources based on instructions in the recipe." title="Overview of toltecmk">
+    <img src="https://github.com/toltec-dev/build/raw/main/media/overview.svg" alt="toltecmk input: recipe; output: packages. Fetches sources based on instructions in the recipe." title="Overview of toltecmk">
 </p>
 
 ### Setup
