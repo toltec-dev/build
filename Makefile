@@ -36,18 +36,18 @@ help:
 .venv/bin/activate:
 	@echo "Setting up development virtual env in .venv"
 	python -m venv .venv; \
-	source .venv/bin/activate; \
+	. .venv/bin/activate; \
 	python -m pip install -r requirements.txt
 
 clean:
 	git clean --force -dX
 
 build: .venv/bin/activate
-	source .venv/bin/activate; \
+	. .venv/bin/activate; \
 	python -m build
 
 standalone: .venv/bin/activate
-	source .venv/bin/activate; \
+	. .venv/bin/activate; \
 	python -m nuitka \
 	    --follow-imports --enable-plugin=anti-bloat \
 	    --enable-plugin=pylint-warnings \
@@ -56,19 +56,19 @@ standalone: .venv/bin/activate
 	    toltec
 
 test: .venv/bin/activate
-	source .venv/bin/activate; \
+	. .venv/bin/activate; \
 	python -m unittest
 
 format: .venv/bin/activate
-	source .venv/bin/activate; \
+	. .venv/bin/activate; \
 	black --line-length 80 --check --diff toltec tests
 
 format-fix: .venv/bin/activate
-	source .venv/bin/activate; \
+	. .venv/bin/activate; \
 	black --line-length 80 toltec tests
 
 lint: .venv/bin/activate
-	source .venv/bin/activate; \
+	. .venv/bin/activate; \
 	echo "==> Typechecking files"; \
 	mypy --disallow-untyped-defs toltec; \
 	echo "==> Linting files"; \

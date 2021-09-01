@@ -14,7 +14,8 @@ from toltec.repo import make_index
 from toltec import util
 
 
-def main():
+def main() -> int:
+    """Execute requested commands and return appropriate exit code."""
     parser = argparse.ArgumentParser(description=__doc__)
 
     parser.add_argument(
@@ -102,7 +103,9 @@ def main():
                     spec.loader.exec_module(module)  # type: ignore
                     module.register(builder)  # type: ignore
                 else:
-                    raise RuntimeError(f"Hook module '{ident}' couldn’t be loaded")
+                    raise RuntimeError(
+                        f"Hook module '{ident}' couldn’t be loaded"
+                    )
 
         build_matrix: Optional[Dict[str, Optional[List[Package]]]] = None
 
@@ -112,7 +115,8 @@ def main():
             for arch, recipes in recipe_bundle.items():
                 if args.package_name:
                     build_matrix[arch] = [
-                        recipes.packages[pkg_name] for pkg_name in args.package_name
+                        recipes.packages[pkg_name]
+                        for pkg_name in args.package_name
                     ]
                 else:
                     build_matrix[arch] = None
@@ -121,6 +125,7 @@ def main():
             return 1
 
     make_index(args.dist_dir)
+    return 0
 
 
 if __name__ == "__main__":

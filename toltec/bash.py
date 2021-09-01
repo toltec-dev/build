@@ -360,6 +360,8 @@ def run_script(variables: Variables, script: str) -> LogGenerator:
 
         if process.returncode != 0:
             raise ScriptError(f"Script exited with code {process.returncode}")
+
+
 def pipe_logs(
     logger: logging.Logger,
     logs: LogGenerator,

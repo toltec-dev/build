@@ -28,6 +28,7 @@ class TestParser(unittest.TestCase):
         self.dir_handle.cleanup()
 
     def test_basic_recipe(self) -> None:
+        """Check that basic fields are parsed."""
         rec_path = path.join(self.dir, "basic-recipe")
         os.makedirs(rec_path)
 
@@ -180,6 +181,7 @@ Architecture: rmall
         )
 
     def test_dependencies(self):
+        """Check that dependency fields are parsed (depends, recommends, ...)"""
         rec_path = path.join(self.dir, "dependencies")
         os.makedirs(rec_path)
 
@@ -313,6 +315,7 @@ Provides: oo (= 1.0)
         )
 
     def test_split_packages(self):
+        """Check that recipes defining several packages are parsed."""
         rec_path = path.join(self.dir, "split-packages")
         os.makedirs(rec_path)
 
@@ -574,6 +577,7 @@ declare -- _upver=4.3.2
         )
 
     def test_split_archs(self):
+        """Check that recipes supporting multiple architectures are parsed."""
         rec_path = path.join(self.dir, "split-archs")
         os.makedirs(rec_path)
 
@@ -1112,6 +1116,7 @@ _configure() {
         self.assertEqual(part2.postremove, "")
 
     def test_errors(self) -> None:
+        """Check error messages raised when invalid recipes are parsed."""
         rec_path = path.join(self.dir, "errors")
         os.makedirs(rec_path)
 
