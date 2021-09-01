@@ -1,0 +1,54 @@
+name: checks
+on: push
+permissions: read-all
+jobs:
+    format:
+        name: Check formatting
+        runs-on: ubuntu-20.04
+        steps:
+          - name: Checkout the Git repository
+            uses: actions/checkout@v2
+          - name: Setup Python
+            uses: actions/setup-python@v2
+            with:
+              python-version: '3.9'
+          - name: Check formatting
+            run: make format
+    lint:
+        name: Check for erroneous constructs
+        runs-on: ubuntu-20.04
+        steps:
+          - name: Checkout the Git repository
+            uses: actions/checkout@v2
+          - name: Setup Python
+            uses: actions/setup-python@v2
+            with:
+              python-version: '3.9'
+          - name: Check for erroneous constructs
+            run: make lint
+    links:
+        name: Check Markdown links
+        runs-on: ubuntu-20.04
+        steps:
+          - name: Checkout the Git repository
+            uses: actions/checkout@v2
+          - name: Setup Node
+            uses: actions/setup-node@v2
+            with:
+              node-version: '16'
+          - name: Check Markdown links
+            run: |
+              npm install -g markdown-link-check
+              make links
+    test:
+        name: Run tests
+        runs-on: ubuntu-20.04
+        steps:
+          - name: Checkout the Git repository
+            uses: actions/checkout@v2
+          - name: Setup Python
+            uses: actions/setup-python@v2
+            with:
+              python-version: '3.9'
+          - name: Run tests
+            run: make test
