@@ -1,6 +1,7 @@
 ## toltecmk
 
 ![toltecmk version badge](https://img.shields.io/pypi/v/toltecmk)
+![Status of the main branch](https://github.com/toltec-dev/build/actions/workflows/checks.yml/badge.svg)
 
 `toltecmk` is a Python tool used to build software packages for the [Toltec repository](https://github.com/toltec-dev/toltec) from _[PKGBUILD](https://wiki.archlinux.org/index.php/PKGBUILD)-like build recipes_.
 It automates common tasks such as fetching sources, building artifacts in a reproducible environment, and creating [Opkg-compatible archives](docs/ipk.md).
