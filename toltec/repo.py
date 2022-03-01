@@ -9,7 +9,7 @@ import logging
 import os
 import textwrap
 from .util import file_sha256
-from .ipk import read_ipk_metadata
+from . import ipk
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +39,9 @@ def make_index(base_dir: str, _start: bool = True) -> None:
             elif entry.is_dir():
                 make_index(entry.path, _start=False)
             elif entry.is_file() and entry.name.endswith(".ipk"):
-                with open(entry.path, "rb") as package:
-                    metadata = read_ipk_metadata(package)
+                with ipk.Reader(entry.path) as package:
+                    metadata = package.metadata
+                    assert metadata is not None
 
                 metadata += textwrap.dedent(
                     f"""\

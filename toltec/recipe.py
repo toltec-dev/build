@@ -98,7 +98,7 @@ class Package:  # pylint: disable=too-many-instance-attributes
     # Name of this package, unique among all recipes of a repository
     name: str
 
-    # Recipe that declares this package
+    # Recipe used to generate this package
     parent: Recipe
 
     # Version number

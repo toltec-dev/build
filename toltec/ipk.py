@@ -1,9 +1,10 @@
 # Copyright (c) 2021 The Toltec Contributors
 # SPDX-License-Identifier: MIT
-"""Make ipk packages."""
+"""Read and write ipk packages."""
 
 from gzip import GzipFile
-from typing import Dict, IO, Optional
+from typing import Dict, IO, Optional, Type, Union
+from types import TracebackType
 from io import BytesIO
 import tarfile
 import operator
@@ -11,12 +12,9 @@ import os
 
 
 def _targz_open(fileobj: IO[bytes], epoch: int) -> tarfile.TarFile:
-    """
-    Open a gzip compressed tar archive for writing.
-
-    Modified from :func:`tarfile.TarFile.gzopen` to support
-    setting the `mtime` attribute on `GzipFile`.
-    """
+    """Open a gzip compressed tar archive for writing."""
+    # HACK: Modified code from `tarfile.TarFile.gzopen` to support
+    # setting the `mtime` attribute on `GzipFile`
     gzipobj = GzipFile(
         filename="", mode="wb", compresslevel=9, fileobj=fileobj, mtime=epoch
     )
@@ -82,23 +80,24 @@ def _add_file(
     archive.addfile(_clean_info(None, epoch, info), BytesIO(data))
 
 
-def make_control(
+def write_control(
     file: IO[bytes], epoch: int, metadata: str, scripts: Dict[str, str]
 ) -> None:
     """
-    Create the control sub-archive.
+    Create the control sub-archive of an ipk package.
 
     See <https://www.debian.org/doc/debian-policy/ch-controlfields.html>
     and <https://www.debian.org/doc/debian-policy/ch-maintainerscripts.html>.
 
     :param file: file to which the sub-archive will be written
-    :param epoch: fixed modification time to set
+    :param epoch: fixed modification time to set in the archive metadata
     :param metadata: package metadata (main control file)
     :param scripts: optional maintainer scripts
     """
     with _targz_open(file, epoch) as archive:
         root_info = tarfile.TarInfo("./")
         root_info.type = tarfile.DIRTYPE
+        root_info.mode = 0o755
         archive.addfile(_clean_info(None, epoch, root_info))
 
         _add_file(archive, "control", 0o644, epoch, metadata.encode())
@@ -107,35 +106,42 @@ def make_control(
             _add_file(archive, name, 0o755, epoch, script.encode())
 
 
-def make_data(file: IO[bytes], epoch: int, pkg_dir: str) -> None:
-    """
-    Create the data sub-archive.
-
-    :param file: file to which the sub-archive will be written
-    :param epoch: fixed modification time to set
-    :param pkg_dir: directory in which the package tree exists
-    """
-    with _targz_open(file, epoch) as archive:
-        archive.add(
-            pkg_dir, filter=lambda info: _clean_info(pkg_dir, epoch, info)
-        )
-
-
-def make_ipk(
+def write_data(
     file: IO[bytes],
     epoch: int,
-    pkg_dir: str,
+    pkg_dir: Optional[str] = None,
+) -> None:
+    """
+    Create the data sub-archive of an ipk package.
+
+    :param file: file to which the sub-archive will be written
+    :param epoch: fixed modification time to set in the archive metadata
+    :param pkg_dir: directory containing the package tree to include in the
+        data sub-archive, leave empty to generate an empty data archive
+    """
+    with _targz_open(file, epoch) as archive:
+        if pkg_dir is not None:
+            archive.add(
+                pkg_dir, filter=lambda info: _clean_info(pkg_dir, epoch, info)
+            )
+
+
+def write(
+    file: IO[bytes],
+    epoch: int,
     metadata: str,
     scripts: Dict[str, str],
+    pkg_dir: Optional[str] = None,
 ) -> None:
     """
     Create an ipk package.
 
     :param file: file to which the package will be written
-    :param epoch: fixed modification time to set
-    :param pkg_dir: directory in which the package tree exists
+    :param epoch: fixed modification time to set in the archives metadata
     :param metadata: package metadata (main control file)
     :param scripts: optional maintainer scripts
+    :param pkg_dir: directory containing the package tree to include in the
+        data sub-archive, leave empty to generate an empty data archive
     """
     with BytesIO() as control, BytesIO() as data, _targz_open(
         file, epoch
@@ -144,29 +150,89 @@ def make_ipk(
         root_info.type = tarfile.DIRTYPE
         archive.addfile(_clean_info(None, epoch, root_info))
 
-        make_control(control, epoch, metadata, scripts)
+        write_control(control, epoch, metadata, scripts)
         _add_file(archive, "control.tar.gz", 0o644, epoch, control.getvalue())
 
-        make_data(data, epoch, pkg_dir)
+        write_data(data, epoch, pkg_dir)
         _add_file(archive, "data.tar.gz", 0o644, epoch, data.getvalue())
 
         _add_file(archive, "debian-binary", 0o644, epoch, b"2.0\n")
 
 
-def read_ipk_metadata(file: IO[bytes]) -> str:
-    """
-    Read the metadata of an ipk package.
+class Reader:
+    """Read from ipk packages."""
 
-    :param file: package file from which to read metadata
-    :returns: metadata document
-    """
-    with tarfile.TarFile.open(fileobj=file, mode="r:gz") as root_archive:
+    def __init__(self, file: Union[str, IO[bytes]]):
+        """
+        Create a package reader.
+        :param file: path to the package file to read, or opened
+            file object for a package file (in the second case, the
+            package file object will not by closed on exit)
+        """
+        self._file: Optional[IO[bytes]] = None
+
+        if isinstance(file, str):
+            self._file = open(file, "rb")  # pylint:disable=consider-using-with
+            self._close = True
+        else:
+            self._file = file
+            self._close = False
+
+        self._root_archive: Optional[tarfile.TarFile] = None
+        self._data_file: Optional[IO[bytes]] = None
+
+        self.data: Optional[tarfile.TarFile] = None
+        self.metadata: Optional[str] = None
+        self.scripts: Dict[str, str] = {}
+
+    def __enter__(self) -> "Reader":
+        """Load package data to memory."""
+        root_archive = tarfile.TarFile.open(fileobj=self._file)
         control_file = root_archive.extractfile("./control.tar.gz")
         assert control_file is not None
 
-        with tarfile.TarFile.open(
-            fileobj=control_file, mode="r:gz"
-        ) as control_archive:
-            metadata_file = control_archive.extractfile("./control")
-            assert metadata_file is not None
-            return metadata_file.read().decode("utf-8")
+        with control_file:
+            with tarfile.TarFile.open(fileobj=control_file) as control_archive:
+                for member in control_archive.getmembers():
+                    if member.isfile():
+                        file = control_archive.extractfile(member)
+                        assert file is not None
+                        with file:
+                            contents = file.read().decode("utf-8")
+                            if member.name == "./control":
+                                self.metadata = contents
+                            else:
+                                self.scripts[member.name[2:]] = contents
+
+        data_file = root_archive.extractfile("./data.tar.gz")
+        assert data_file is not None
+        self._root_archive = root_archive
+        self._data_file = data_file
+        self.data = tarfile.TarFile.open(fileobj=data_file)
+
+        return self
+
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_inst: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> None:
+        """Free resources containing package data."""
+        if self.data is not None:
+            self.data.close()
+            self.data = None
+
+        if self._data_file is not None:
+            self._data_file.close()
+            self._data_file = None
+
+        if self._root_archive is not None:
+            self._root_archive.close()
+            self._root_archive = None
+
+        if self._file is not None:
+            if self._close:
+                self._file.close()
+
+            self._file = None

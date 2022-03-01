@@ -467,7 +467,7 @@ source file '{source.url}', got {req.status_code}"
         epoch = int(package.parent.timestamp.timestamp())
 
         with open(ar_path, "wb") as file:
-            ipk.make_ipk(
+            ipk.write(
                 file,
                 epoch=epoch,
                 pkg_dir=pkg_dir,
