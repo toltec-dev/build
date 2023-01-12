@@ -142,8 +142,13 @@ declare -p
             if name not in default_variables:
                 variables[name] = value
         else:
-            assert next_token == "("
-            assert lexer.get_token() == ")"
+            if next_token != "(":
+                raise ScriptError(f"Unexpected token '{next_token}' on line {lexer.lineno}. Expecting '('.")
+            
+            _token = lexer.get_token()
+            if _token != ")":
+                raise ScriptError(f"Unexpected token '{_token}' on line {lexer.lineno}. Expecting ')'.")
+                
             start, end = _parse_func(lexer)
             functions[token] = declarations[start:end].strip(" ")
 
