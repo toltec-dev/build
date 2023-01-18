@@ -9,7 +9,6 @@ import re
 import os
 import logging
 import textwrap
-import docker
 import requests
 from . import bash, util, ipk
 from .recipe import RecipeBundle, Recipe, Package
@@ -28,10 +27,9 @@ class Builder:  # pylint: disable=too-few-public-methods
     # Detect non-local paths
     URL_REGEX = re.compile(r"[a-z]+://")
 
-    # Prefix for all Toltec Docker images
-    IMAGE_PREFIX = "ghcr.io/toltec-dev/"
-
-    def __init__(self, work_dir: str, dist_dir: str) -> None:
+    def __init__(
+        self, work_dir: str, dist_dir: str, source_dir: Optional[str]
+    ) -> None:
         """
         Create a builder helper.
 
@@ -40,15 +38,7 @@ class Builder:  # pylint: disable=too-few-public-methods
         """
         self.work_dir = work_dir
         self.dist_dir = dist_dir
-
-        try:
-            self.docker = docker.from_env()
-        except docker.errors.DockerException as err:
-            raise BuildError(
-                "Unable to connect to the Docker daemon. \
-Please check that the service is running and that you have the necessary \
-permissions."
-            ) from err
+        self.source_dir = source_dir
 
     def __enter__(self) -> "Builder":
         return self
@@ -59,7 +49,7 @@ permissions."
         exc_value: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> None:
-        self.docker.close()
+        pass
 
     @util.hook
     def post_parse(self, recipe: Recipe) -> None:
@@ -164,13 +154,13 @@ or [k]eep it (not recommended)?",
         packages: Optional[List[Package]] = None,
     ) -> bool:
         self.post_parse(recipe)
-
-        src_dir = os.path.join(build_dir, "src")
-        os.makedirs(src_dir, exist_ok=True)
-
-        self._fetch_sources(recipe, src_dir)
-        self.post_fetch_sources(recipe, src_dir)
-
+        if self.source_dir:
+            src_dir = self.source_dir
+        else:
+            src_dir = os.path.join(build_dir, "src")
+            os.makedirs(src_dir, exist_ok=True)
+            self._fetch_sources(recipe, src_dir)
+            self.post_fetch_sources(recipe, src_dir)
         self._prepare(recipe, src_dir)
         self.post_prepare(recipe, src_dir)
 
@@ -274,8 +264,6 @@ source file '{source.url}', got {req.status_code}"
         for filename in util.list_tree(src_dir):
             os.utime(filename, (epoch, epoch))
 
-        mount_src = "/src"
-        repo_src = "/repo"
         uid = os.getuid()
         pre_script: List[str] = []
 
@@ -331,33 +319,17 @@ source file '{source.url}', got {req.status_code}"
                     " -- " + " ".join(host_deps),
                 )
             )
-
-        logs = bash.run_script_in_container(
-            self.docker,
-            image=self.IMAGE_PREFIX + recipe.image,
-            mounts=[
-                docker.types.Mount(
-                    type="bind",
-                    source=os.path.abspath(src_dir),
-                    target=mount_src,
-                ),
-                docker.types.Mount(
-                    type="bind",
-                    source=os.path.abspath(self.dist_dir),
-                    target=repo_src,
-                ),
-            ],
-            variables={
-                "srcdir": mount_src,
-            },
+        logs = bash.run_script(
             script="\n".join(
                 (
+                    f'cd "{src_dir}"',
                     *pre_script,
-                    f'cd "{mount_src}"',
                     recipe.build,
-                    f'chown -R {uid}:{uid} "{mount_src}"',
                 )
             ),
+            variables={
+                "srcdir": src_dir,
+            },
         )
         bash.pipe_logs(logger, logs, "build()")
 

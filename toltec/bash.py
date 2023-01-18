@@ -8,7 +8,6 @@ import subprocess
 import logging
 from collections import deque
 from typing import Deque, Dict, Generator, List, Optional, Tuple, Union
-from docker.client import DockerClient
 
 AssociativeArray = Dict[str, str]
 IndexedArray = List[Optional[str]]
@@ -361,59 +360,6 @@ def run_script(variables: Variables, script: str) -> LogGenerator:
 
         if process.returncode != 0:
             raise ScriptError(f"Script exited with code {process.returncode}")
-
-
-def run_script_in_container(
-    docker: DockerClient,
-    image: str,
-    mounts: List,
-    variables: Variables,
-    script: str,
-) -> LogGenerator:
-    """
-    Run a Bash script inside a Docker container and stream its output.
-
-    :param docker: Docker client
-    :param image: image to use for the new container
-    :param mounts: paths to mount in the container
-    :param variables: Bash variables to set before running the script
-    :param script: Bash script to execute
-    :returns: generator yielding output lines from the script
-    :raises ScriptError: if the script exits with a non-zero code
-    """
-    container = docker.containers.run(
-        image,
-        mounts=mounts,
-        command=[
-            "/usr/bin/env",
-            "bash",
-            "-c",
-            "\n".join(
-                (
-                    "set -euo pipefail",
-                    put_variables(variables),
-                    "script() {",
-                    script,
-                    "}",
-                    "script",
-                )
-            ),
-        ],
-        detach=True,
-        security_opt=["label=disable"],
-    )
-
-    try:
-        for line in container.logs(stream=True):
-            if line:
-                yield line.decode().strip()
-
-        result = container.wait()
-
-        if result["StatusCode"] != 0:
-            raise ScriptError(f"Script exited with code {result['StatusCode']}")
-    finally:
-        container.remove()
 
 
 def pipe_logs(
