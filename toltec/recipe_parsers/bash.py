@@ -32,12 +32,12 @@ def parse(path: str) -> RecipeBundle:
     :param path: path to the directory containing the recipe definition
     :returns: loaded recipe
     """
-    with open(os.path.join(path, "package"), "r") as recipe:
+    with open(os.path.join(path, "package"), "r", encoding="UTF-8") as recipe:
         result = {}
         definition = recipe.read()
         variables, functions = bash.get_declarations(definition)
 
-        for (arch, variables, functions) in _instantiate_arch(
+        for arch, variables, functions in _instantiate_arch(
             path, variables, functions
         ):
             result[arch] = _parse_recipe(path, variables, functions)

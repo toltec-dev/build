@@ -215,7 +215,7 @@ or [k]eep it (not recommended)?",
                 shutil.copy2(os.path.join(recipe.path, source.url), local_path)
             else:
                 # Fetch source file from the network
-                req = requests.get(source.url)
+                req = requests.get(source.url, timeout=(3.05, 300))
 
                 if req.status_code != 200:
                     raise BuildError(
@@ -229,7 +229,7 @@ source file '{source.url}', got {req.status_code}"
 
             # Verify checksum
             file_sha = util.file_sha256(local_path)
-            if source.checksum != "SKIP" and file_sha != source.checksum:
+            if source.checksum not in ("SKIP", file_sha):
                 raise BuildError(
                     f"Invalid checksum for source file {source.url}:\n"
                     f"  expected {source.checksum}\n"

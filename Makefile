@@ -53,6 +53,7 @@ standalone: .venv/bin/activate
 	    --enable-plugin=pylint-warnings \
 	    --onefile --linux-onefile-icon=media/overview.svg \
 	    --assume-yes-for-downloads \
+	    -o toltecmk \
 	    toltec
 
 test: .venv/bin/activate
