@@ -184,9 +184,7 @@ def auto_extract(archive_path: str, dest_path: str) -> bool:
         return True
 
     if exts[0] == ".tar" or (
-        len(exts) >= 2
-        and exts[0] in (".gz", ".bz2", ".xz")
-        and exts[1] == ".tar"
+        len(exts) >= 2 and exts[0] in (".gz", ".bz2", ".xz") and exts[1] == ".tar"
     ):
         with tarfile.open(archive_path, mode="r") as tar_archive:
             _auto_extract(
@@ -350,7 +348,6 @@ class Hook(Protocol):  # pylint:disable=too-few-public-methods
     @staticmethod
     def register(new_listener: HookListener) -> None:
         """Add a new listener to this hook."""
-        ...
 
     # Invoke all listeners for this hook
     __call__: HookTrigger

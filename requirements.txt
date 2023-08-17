@@ -27,4 +27,4 @@ websocket-client==1.6.1
 wrapt==1.15.0
 scons==4.5.2
 nuitka==1.7.10
-black==23.7.0
+black==22.7.0

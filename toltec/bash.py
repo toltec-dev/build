@@ -101,13 +101,11 @@ declare -p
         "PATH": os.environ["PATH"],
     }
 
-    declarations_subshell = (
-        subprocess.run(  # pylint:disable=subprocess-run-check
-            ["/usr/bin/env", "bash"],
-            input=src.encode(),
-            capture_output=True,
-            env=env,
-        )
+    declarations_subshell = subprocess.run(  # pylint:disable=subprocess-run-check
+        ["/usr/bin/env", "bash"],
+        input=src.encode(),
+        capture_output=True,
+        env=env,
     )
 
     errors = declarations_subshell.stderr.decode()
@@ -124,8 +122,8 @@ declare -p
     lexer = shlex.shlex(declarations, posix=True)
     lexer.wordchars = lexer.wordchars + "-"
 
-    variables = {}
-    functions = {}
+    variables: Variables = {}
+    functions: Functions = {}
 
     while True:
         token = lexer.get_token()
@@ -134,6 +132,8 @@ declare -p
             break
 
         next_token = lexer.get_token()
+        assert token is not None
+        assert next_token is not None
 
         if token == "declare" and next_token[0] == "-":
             lexer.push_token(next_token)
@@ -192,9 +192,9 @@ def put_functions(functions: Functions) -> str:
     return result
 
 
-def _parse_string(token: str) -> str:
+def _parse_string(token: str | None) -> str:
     """Remove escape sequences from a Bash string."""
-    return token.replace("\\$", "$")
+    return (token or "").replace("\\$", "$")
 
 
 def _generate_string(string: str) -> str:
@@ -215,7 +215,7 @@ def _parse_indexed(lexer: shlex.shlex) -> IndexedArray:
             break
 
         assert token == "["
-        index = int(lexer.get_token())
+        index = int(lexer.get_token() or "")
         assert lexer.get_token() == "]"
         assert lexer.get_token() == "="
         value = _parse_string(lexer.get_token())
@@ -245,7 +245,7 @@ def _generate_indexed(array: IndexedArray) -> str:
 def _parse_assoc(lexer: shlex.shlex) -> AssociativeArray:
     """Parse an associative Bash array."""
     assert lexer.get_token() == "("
-    result = {}
+    result: AssociativeArray = {}
 
     while True:
         token = lexer.get_token()
@@ -256,6 +256,7 @@ def _parse_assoc(lexer: shlex.shlex) -> AssociativeArray:
 
         assert token == "["
         key = lexer.get_token()
+        assert key is not None
         assert lexer.get_token() == "]"
         assert lexer.get_token() == "="
         value = _parse_string(lexer.get_token())
@@ -280,6 +281,7 @@ def _generate_assoc(array: AssociativeArray) -> str:
 def _parse_var(lexer: shlex.shlex) -> Tuple[str, Optional[Any]]:
     """Parse a variable declaration."""
     flags_token = lexer.get_token()
+    assert flags_token is not None
 
     if flags_token != "--":
         var_flags = set(flags_token[1:])
@@ -289,6 +291,8 @@ def _parse_var(lexer: shlex.shlex) -> Tuple[str, Optional[Any]]:
     var_name = lexer.get_token()
     var_value: Optional[Any] = None
     lookahead = lexer.get_token()
+    assert var_name is not None
+    assert lookahead is not None
 
     if lookahead == "=":
         if "a" in var_flags:
