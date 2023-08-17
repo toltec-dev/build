@@ -145,12 +145,16 @@ declare -p
                 variables[name] = value
         else:
             if next_token != "(":
-                raise ScriptError(f"Unexpected token '{next_token}' on line {lexer.lineno}. Expecting '('.")
-            
+                raise ScriptError(
+                    f"Unexpected token '{next_token}' on line {lexer.lineno}. Expecting '('."
+                )
+
             _token = lexer.get_token()
             if _token != ")":
-                raise ScriptError(f"Unexpected token '{_token}' on line {lexer.lineno}. Expecting ')'.")
-                
+                raise ScriptError(
+                    f"Unexpected token '{_token}' on line {lexer.lineno}. Expecting ')'."
+                )
+
             start, end = _parse_func(lexer)
             functions[token] = declarations[start:end].strip(" ")
 
