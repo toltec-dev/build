@@ -1,6 +1,6 @@
 astroid==2.6.5
 build==0.6.0.post1
-certifi==2021.5.30
+certifi==2023.7.22
 charset-normalizer==2.0.4
 docker==5.0.0
 idna==3.2
