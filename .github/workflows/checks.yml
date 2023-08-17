@@ -71,7 +71,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
           cache: 'pip'
-      - name: Run tests
+      - name: Building toltecmk
         run: make standalone
       - uses: actions/upload-artifact@v3
         with:
