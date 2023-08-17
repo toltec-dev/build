@@ -101,13 +101,11 @@ declare -p
         "PATH": os.environ["PATH"],
     }
 
-    declarations_subshell = (
-        subprocess.run(  # pylint:disable=subprocess-run-check
-            ["/usr/bin/env", "bash"],
-            input=src.encode(),
-            capture_output=True,
-            env=env,
-        )
+    declarations_subshell = subprocess.run(  # pylint:disable=subprocess-run-check
+        ["/usr/bin/env", "bash"],
+        input=src.encode(),
+        capture_output=True,
+        env=env,
     )
 
     errors = declarations_subshell.stderr.decode()
@@ -194,9 +192,9 @@ def put_functions(functions: Functions) -> str:
     return result
 
 
-def _parse_string(token: str | None) -> str:
+def _parse_string(token: str) -> str:
     """Remove escape sequences from a Bash string."""
-    return (token or "").replace("\\$", "$")
+    return token.replace("\\$", "$")
 
 
 def _generate_string(string: str) -> str:
@@ -220,7 +218,7 @@ def _parse_indexed(lexer: shlex.shlex) -> IndexedArray:
         index = int(lexer.get_token() or "")
         assert lexer.get_token() == "]"
         assert lexer.get_token() == "="
-        value = _parse_string(lexer.get_token())
+        value = _parse_string(lexer.get_token() or "")
 
         # Grow the result array so that the index exists
         if index >= len(result):
@@ -261,7 +259,7 @@ def _parse_assoc(lexer: shlex.shlex) -> AssociativeArray:
         assert key is not None
         assert lexer.get_token() == "]"
         assert lexer.get_token() == "="
-        value = _parse_string(lexer.get_token())
+        value = _parse_string(lexer.get_token() or "")
 
         result[key] = value
 
@@ -302,7 +300,7 @@ def _parse_var(lexer: shlex.shlex) -> Tuple[str, Optional[Any]]:
         elif "A" in var_flags:
             var_value = _parse_assoc(lexer)
         else:
-            var_value = _parse_string(lexer.get_token())
+            var_value = _parse_string(lexer.get_token() or "")
     else:
         lexer.push_token(lookahead)
 
