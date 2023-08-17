@@ -23,7 +23,7 @@ pip install toltecmk
 There are a few system requirements to use this tool:
 
 * Linux-based operating system
-* Python ⩾ 3.9
+* Python ⩾ 3.11
 * Docker
 
 ### Basic Usage
