@@ -46,6 +46,7 @@ jobs:
     name: Run tests
     runs-on: ubuntu-20.04
     strategy:
+      fail-fast: false
       matrix:
         python: ['3.9', '3.10', '3.11']
     steps:
@@ -58,3 +59,21 @@ jobs:
           cache: 'pip'
       - name: Run tests
         run: make test
+  standalone:
+    name: Make Standalone
+    runs-on: ubuntu-20.04
+    needs: [format, lint, test]
+    steps:
+      - name: Checkout the Git repository
+        uses: actions/checkout@v3
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python }}
+          cache: 'pip'
+      - name: Run tests
+        run: make standalone
+      - uses: actions/upload-artifact@v3
+        with:
+          name: toltecmk
+          path: toltecmk
