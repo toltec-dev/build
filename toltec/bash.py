@@ -229,7 +229,10 @@ def _parse_indexed(lexer: shlex.shlex) -> IndexedArray:
         index = int(lexer.get_token() or "")
         assert lexer.get_token() == "]"
         assert lexer.get_token() == "="
-        value = _parse_string(lexer.get_token() or "")
+        string_token = lexer.get_token() or ""
+        if string_token == "$":
+            string_token = lexer.get_token() or ""
+        value = _parse_string(string_token)
 
         # Grow the result array so that the index exists
         if index >= len(result):
@@ -270,7 +273,10 @@ def _parse_assoc(lexer: shlex.shlex) -> AssociativeArray:
         assert key is not None
         assert lexer.get_token() == "]"
         assert lexer.get_token() == "="
-        value = _parse_string(lexer.get_token() or "")
+        string_token = lexer.get_token() or ""
+        if string_token == "$":
+            string_token = lexer.get_token() or ""
+        value = _parse_string(string_token)
 
         result[key] = value
 
@@ -311,7 +317,10 @@ def _parse_var(lexer: shlex.shlex) -> Tuple[str, Optional[Any]]:
         elif "A" in var_flags:
             var_value = _parse_assoc(lexer)
         else:
-            var_value = _parse_string(lexer.get_token() or "")
+            string_token = lexer.get_token() or ""
+            if string_token == "$":
+                string_token = lexer.get_token() or ""
+            var_value = _parse_string(string_token)
     else:
         lexer.push_token(lookahead)
 
