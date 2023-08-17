@@ -184,7 +184,9 @@ def auto_extract(archive_path: str, dest_path: str) -> bool:
         return True
 
     if exts[0] == ".tar" or (
-        len(exts) >= 2 and exts[0] in (".gz", ".bz2", ".xz") and exts[1] == ".tar"
+        len(exts) >= 2
+        and exts[0] in (".gz", ".bz2", ".xz")
+        and exts[1] == ".tar"
     ):
         with tarfile.open(archive_path, mode="r") as tar_archive:
             _auto_extract(
