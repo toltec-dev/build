@@ -5,6 +5,7 @@ Repository management.
 """
 
 import gzip
+import locale
 import logging
 import os
 import textwrap
@@ -30,9 +31,9 @@ def make_index(base_dir: str, _start: bool = True) -> None:
     index_path = os.path.join(base_dir, "Packages")
     index_gzip_path = os.path.join(base_dir, "Packages.gz")
 
-    with open(index_path, "w") as index_file, gzip.open(
-        index_gzip_path, "wt"
-    ) as index_gzip_file:
+    with open(
+        index_path, "w", encoding=locale.getencoding()
+    ) as index_file, gzip.open(index_gzip_path, "wt") as index_gzip_file:
         for entry in os.scandir(base_dir):
             if entry.name in ("Packages", "Packages.gz"):
                 pass
