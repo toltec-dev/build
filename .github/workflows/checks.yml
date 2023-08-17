@@ -7,11 +7,11 @@ jobs:
         runs-on: ubuntu-20.04
         steps:
           - name: Checkout the Git repository
-            uses: actions/checkout@v2
+            uses: actions/checkout@v3
           - name: Setup Python
-            uses: actions/setup-python@v2
+            uses: actions/setup-python@v3
             with:
-              python-version: '3.9'
+              python-version: '3.11'
           - name: Check formatting
             run: make format
     lint:
@@ -19,11 +19,11 @@ jobs:
         runs-on: ubuntu-20.04
         steps:
           - name: Checkout the Git repository
-            uses: actions/checkout@v2
+            uses: actions/checkout@v3
           - name: Setup Python
-            uses: actions/setup-python@v2
+            uses: actions/setup-python@v3
             with:
-              python-version: '3.9'
+              python-version: '3.11'
           - name: Check for erroneous constructs
             run: make lint
     links:
@@ -45,10 +45,10 @@ jobs:
         runs-on: ubuntu-20.04
         steps:
           - name: Checkout the Git repository
-            uses: actions/checkout@v2
+            uses: actions/checkout@v3
           - name: Setup Python
-            uses: actions/setup-python@v2
+            uses: actions/setup-python@v3
             with:
-              python-version: '3.9'
+              python-version: '3.11'
           - name: Run tests
             run: make test
