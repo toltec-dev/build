@@ -69,7 +69,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python }}
+          python-version: '3.11'
           cache: 'pip'
       - name: Building toltecmk
         run: make standalone
