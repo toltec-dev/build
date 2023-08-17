@@ -9,9 +9,10 @@ jobs:
       - name: Checkout the Git repository
         uses: actions/checkout@v3
       - name: Setup Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v4
         with:
           python-version: '3.11'
+          cache: 'pip'
       - name: Check formatting
         run: make format
   lint:
@@ -21,9 +22,10 @@ jobs:
       - name: Checkout the Git repository
         uses: actions/checkout@v3
       - name: Setup Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v4
         with:
           python-version: '3.11'
+          cache: 'pip'
       - name: Check for erroneous constructs
         run: make lint
   links:
@@ -45,13 +47,14 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        python: [3.10, 3.11]
+        python: ['3.10', '3.11']
     steps:
       - name: Checkout the Git repository
         uses: actions/checkout@v3
       - name: Setup Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python }}
+          cache: 'pip'
       - name: Run tests
         run: make test
