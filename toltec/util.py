@@ -350,7 +350,6 @@ class Hook(Protocol):  # pylint:disable=too-few-public-methods
     @staticmethod
     def register(new_listener: HookListener) -> None:
         """Add a new listener to this hook."""
-        ...
 
     # Invoke all listeners for this hook
     __call__: HookTrigger
