@@ -33,21 +33,27 @@ export USAGE
 help:
 	@echo "$$USAGE"
 
-.venv/bin/activate:
+.venv-build/bin/activate:
 	@echo "Setting up development virtual env in .venv"
-	python -m venv .venv; \
-	. .venv/bin/activate; \
+	python -m venv .venv-build; \
+	. .venv-build/bin/activate; \
+	python -m pip install -r requirements.build.txt
+
+.venv-runtime/bin/activate:
+	@echo "Setting up development virtual env in .venv"
+	python -m venv .venv-runtime; \
+	. .venv-runtime/bin/activate; \
 	python -m pip install -r requirements.txt
 
 clean:
 	git clean --force -dX
 
-build: .venv/bin/activate
-	. .venv/bin/activate; \
+build: .venv-build/bin/activate
+	. .venv-build/bin/activate; \
 	python -m build
 
-standalone: .venv/bin/activate
-	. .venv/bin/activate; \
+standalone: .venv-build/bin/activate
+	. .venv-build/bin/activate; \
 	python -m nuitka \
 	    --follow-imports --enable-plugin=anti-bloat \
 	    --enable-plugin=pylint-warnings \
@@ -56,20 +62,20 @@ standalone: .venv/bin/activate
 	    -o toltecmk \
 	    toltec
 
-test: .venv/bin/activate
-	. .venv/bin/activate; \
+test: .venv-runtime/bin/activate
+	. .venv-runtime/bin/activate; \
 	python -m unittest
 
-format: .venv/bin/activate
-	. .venv/bin/activate; \
+format: .venv-build/bin/activate
+	. .venv-build/bin/activate; \
 	black --line-length 80 --check --diff toltec tests
 
-format-fix: .venv/bin/activate
-	. .venv/bin/activate; \
+format-fix: .venv-build/bin/activate
+	. .venv-build/bin/activate; \
 	black --line-length 80 toltec tests
 
-lint: .venv/bin/activate
-	. .venv/bin/activate; \
+lint: .venv-build/bin/activate
+	. .venv-build/bin/activate; \
 	echo "==> Typechecking files"; \
 	mypy --disallow-untyped-defs toltec; \
 	echo "==> Linting files"; \

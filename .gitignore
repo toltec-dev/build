@@ -2,8 +2,10 @@
 *.build
 *.dist
 *.egg-info
-.venv
+.venv-build
+.venv-runtime
 __pycache__
 dist
 *.onefile-build
 toltecmk
+env/
