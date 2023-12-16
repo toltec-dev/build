@@ -120,8 +120,11 @@ jobs:
       url: https://pypi.org/p/toltecmk
     steps:
       - name: Download pip packages
+        id: download
         uses: action/download-artifact@v4
         with:
           name: pip
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: ${{ steps.download.outputs.download-path }}
