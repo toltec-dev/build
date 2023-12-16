@@ -14,24 +14,7 @@ from toltec.util import listener
 
 logger = logging.getLogger(__name__)
 
-OXIDE_HOOK = """
-if systemctl --quiet is-active tarnish.service 2> /dev/null; then
-    echo -n "Reloading Oxide applications: "
-    local ret
-    if type update-desktop-database &> /dev/null; then
-        update-desktop-database --quiet
-        ret=$?
-    else
-        /opt/bin/rot apps call reload 2> /dev/null
-        ret=$?
-    fi
-    if [ $ret -eq 0 ]; then
-        echo "Done!"
-    else
-        echo "Failed!"
-    fi
-fi
-"""
+OXIDE_HOOK = "\nreload-oxide-apps\n"
 
 
 def register(builder: Builder) -> None:
