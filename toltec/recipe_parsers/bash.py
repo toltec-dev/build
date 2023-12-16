@@ -37,9 +37,7 @@ def parse(path: str) -> RecipeBundle:
         definition = recipe.read()
         variables, functions = bash.get_declarations(definition)
 
-        for arch, variables, functions in _instantiate_arch(
-            path, variables, functions
-        ):
+        for arch, variables, functions in _instantiate_arch(path, variables, functions):
             result[arch] = _parse_recipe(path, variables, functions)
 
         return result
@@ -174,21 +172,15 @@ def _parse_recipe(  # pylint: disable=too-many-locals, disable=too-many-statemen
 
     makedepends_raw = _pop_field_indexed(path, variables, "makedepends", [])
     raw_vars["makedepends"] = makedepends_raw
-    attrs["makedepends"] = {
-        Dependency.parse(dep or "") for dep in makedepends_raw
-    }
+    attrs["makedepends"] = {Dependency.parse(dep or "") for dep in makedepends_raw}
 
     attrs["maintainer"] = raw_vars["maintainer"] = _pop_field_string(
         path, variables, "maintainer"
     )
 
-    attrs["image"] = raw_vars["image"] = _pop_field_string(
-        path, variables, "image", ""
-    )
+    attrs["image"] = raw_vars["image"] = _pop_field_string(path, variables, "image", "")
 
-    attrs["arch"] = raw_vars["arch"] = _pop_field_string(
-        path, variables, "arch"
-    )
+    attrs["arch"] = raw_vars["arch"] = _pop_field_string(path, variables, "arch")
 
     if attrs["image"] and "build" not in functions:
         raise RecipeError(
@@ -305,9 +297,7 @@ def _parse_package(  # pylint: disable=too-many-locals, disable=too-many-stateme
         parent.path, variables, "pkgdesc"
     )
 
-    attrs["url"] = raw_vars["url"] = _pop_field_string(
-        parent.path, variables, "url"
-    )
+    attrs["url"] = raw_vars["url"] = _pop_field_string(parent.path, variables, "url")
 
     attrs["section"] = raw_vars["section"] = _pop_field_string(
         parent.path, variables, "section"
@@ -407,8 +397,7 @@ def _pop_field_string(
     if not isinstance(value, str):
         raise RecipeError(
             path,
-            f"Field '{name}' must be a string, \
-got a {type(value).__name__}",
+            f"Field '{name}' must be a string, got a {type(value).__name__}",
         )
 
     return value
@@ -428,10 +417,10 @@ def _pop_field_indexed(
     value = variables.pop(name)
 
     if not isinstance(value, list):
+        _name = type(value).__name__
         raise RecipeError(
             path,
-            f"Field '{name}' must be an indexed array, \
-got a {type(value).__name__}",
+            f"Field '{name}' must be an indexed array, got a {_name}",
         )
 
     return value
