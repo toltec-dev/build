@@ -77,7 +77,9 @@ def register(builder: Builder) -> None:
         if strip_x86:
             script.append(
                 "strip --strip-all -- "
-                + " ".join(docker_file_path(file_path) for file_path in strip_x86)
+                + " ".join(
+                    docker_file_path(file_path) for file_path in strip_x86
+                )
             )
 
             logger.debug("x86 binaries to be stripped:")
@@ -91,7 +93,9 @@ def register(builder: Builder) -> None:
         if strip_arm:
             script.append(
                 '"${CROSS_COMPILE}strip" --strip-all -- '
-                + " ".join(docker_file_path(file_path) for file_path in strip_arm)
+                + " ".join(
+                    docker_file_path(file_path) for file_path in strip_arm
+                )
             )
 
             logger.debug("ARM binaries to be stripped:")

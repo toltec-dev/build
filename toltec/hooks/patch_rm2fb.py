@@ -53,7 +53,11 @@ def register(builder: Builder) -> None:
                         dynamic = info.get_section_by_name(".dynamic")
                         rodata = info.get_section_by_name(".rodata")
 
-                        if dynamic and rodata and rodata.data().find(b"/dev/fb0") != -1:
+                        if (
+                            dynamic
+                            and rodata
+                            and rodata.data().find(b"/dev/fb0") != -1
+                        ):
                             binaries.append(file_path)
                 except ELFError:
                     # Ignore non-ELF files

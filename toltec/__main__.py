@@ -106,7 +106,9 @@ def main() -> int:  # pylint:disable=too-many-branches
                     spec.loader.exec_module(module)  # type: ignore
                     module.register(builder)  # type: ignore
                 else:
-                    raise RuntimeError(f"Hook module '{ident}' couldn’t be loaded")
+                    raise RuntimeError(
+                        f"Hook module '{ident}' couldn’t be loaded"
+                    )
 
         build_matrix: Optional[Dict[str, Optional[List[Package]]]] = None
 
@@ -116,7 +118,8 @@ def main() -> int:  # pylint:disable=too-many-branches
             for arch, recipes in recipe_bundle.items():
                 if args.package_name:
                     build_matrix[arch] = [
-                        recipes.packages[pkg_name] for pkg_name in args.package_name
+                        recipes.packages[pkg_name]
+                        for pkg_name in args.package_name
                     ]
                 else:
                     build_matrix[arch] = None
