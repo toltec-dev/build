@@ -1,12 +1,13 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import toltec.hooks
 
 a = Analysis(
-    ['toltec/__main__.py'],
+    ["toltec/__main__.py"],
     pathex=[],
     binaries=[],
     datas=[],
-    hiddenimports=[],
+    hiddenimports=[f"toltec.hooks.{x}" for x in toltec.hooks.__all__],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -21,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='toltecmk',
+    name="toltecmk",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
