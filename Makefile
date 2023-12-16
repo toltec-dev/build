@@ -54,13 +54,7 @@ build: .venv-build/bin/activate
 
 standalone: .venv-build/bin/activate
 	. .venv-build/bin/activate; \
-	python -m nuitka \
-	    --follow-imports --enable-plugin=anti-bloat \
-	    --enable-plugin=pylint-warnings \
-	    --onefile --linux-onefile-icon=media/overview.svg \
-	    --assume-yes-for-downloads \
-	    -o toltecmk \
-	    toltec
+	python -m PyInstaller toltecmk.spec
 
 test: .venv-runtime/bin/activate
 	. .venv-runtime/bin/activate; \

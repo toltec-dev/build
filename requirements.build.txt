@@ -2,7 +2,7 @@
 build==0.6.0.post1
 packaging==23.1
 pep517==0.13.0
-nuitka==1.7.10
+pyinstaller==6.3.0
 black==23.7.0
 astroid==2.15.6
 certifi==2023.7.22

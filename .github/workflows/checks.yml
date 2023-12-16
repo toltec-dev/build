@@ -79,13 +79,8 @@ jobs:
         with:
           python-version: '3.12'
           cache: 'pip'
-      - name: Nuitka cache
-        uses: actions/cache@v3
-        with:
-          path: nuitka-cache
-          key: ${{ runner.os }}-nuitka-cache
       - name: Building toltecmk
-        run: NUITKA_CACHE_DIR=nuitka-cache make standalone
+        run: make standalone
       - uses: actions/upload-artifact@v3
         with:
           name: toltecmk
