@@ -8,6 +8,7 @@ behavior is disabled if the recipe declares the 'nostrip' flag.
 import os
 import logging
 import shlex
+from typing import Callable, List
 import docker
 from elftools.elf.elffile import ELFFile, ELFError
 from toltec import bash
@@ -19,6 +20,43 @@ logger = logging.getLogger(__name__)
 
 MOUNT_SRC = "/src"
 TOOLCHAIN = "toolchain:v1.3.1"
+
+
+def walk_elfs(src_dir: str, for_each: Callable) -> None:
+    """Walk through all the ELF binaries in a directory and run a method for each of them"""
+    for directory, _, files in os.walk(src_dir):
+        for file_name in files:
+            file_path = os.path.join(directory, file_name)
+
+            try:
+                with open(file_path, "rb") as file:
+                    for_each(ELFFile(file))
+            except ELFError:
+                # Ignore non-ELF files
+                pass
+            except IsADirectoryError:
+                # Ignore directories
+                pass
+
+
+def run_in_container(
+    builder: Builder, src_dir: str, _logger: logging.Logger, script: List[str]
+) -> None:
+    """Run a script in a container and log output"""
+    logs = bash.run_script_in_container(
+        builder.docker,
+        image=builder.IMAGE_PREFIX + TOOLCHAIN,
+        mounts=[
+            docker.types.Mount(
+                type="bind",
+                source=os.path.abspath(src_dir),
+                target=MOUNT_SRC,
+            )
+        ],
+        variables={},
+        script="\n".join(script),
+    )
+    bash.pipe_logs(_logger, logs)
 
 
 def register(builder: Builder) -> None:
@@ -33,29 +71,23 @@ def register(builder: Builder) -> None:
             return
 
         # Search for binary objects that can be stripped
-        strip_arm = []
-        strip_x86 = []
+        strip_arm: List[str] = []
+        strip_x86: List[str] = []
 
-        for directory, _, files in os.walk(src_dir):
-            for file_name in files:
-                file_path = os.path.join(directory, file_name)
+        def filter_elfs(info: ELFFile) -> None:
+            symtab = info.get_section_by_name(".symtab")
+            if not symtab:
+                return
+            if info.get_machine_arch() == "ARM":
+                strip_arm.append(file_path)
+            elif info.get_machine_arch() in ("x86", "x64"):
+                strip_x86.append(file_path)
 
-                try:
-                    with open(file_path, "rb") as file:
-                        info = ELFFile(file)
-                        symtab = info.get_section_by_name(".symtab")
+        walk_elfs(src_dir, filter_elfs)
 
-                        if symtab:
-                            if info.get_machine_arch() == "ARM":
-                                strip_arm.append(file_path)
-                            elif info.get_machine_arch() in ("x86", "x64"):
-                                strip_x86.append(file_path)
-                except ELFError:
-                    # Ignore non-ELF files
-                    pass
-                except IsADirectoryError:
-                    # Ignore directories
-                    pass
+        if not strip_arm and not strip_x86:
+            logger.debug("Skipping, no binaries found")
+            return
 
         # Save original mtimes to restore them afterwards
         # This will prevent any Makefile rules to be triggered again
@@ -106,20 +138,7 @@ def register(builder: Builder) -> None:
                     os.path.relpath(file_path, src_dir),
                 )
 
-            logs = bash.run_script_in_container(
-                builder.docker,
-                image=builder.IMAGE_PREFIX + TOOLCHAIN,
-                mounts=[
-                    docker.types.Mount(
-                        type="bind",
-                        source=os.path.abspath(src_dir),
-                        target=MOUNT_SRC,
-                    )
-                ],
-                variables={},
-                script="\n".join(script),
-            )
-            bash.pipe_logs(logger, logs)
+        run_in_container(builder, src_dir, logger, script)
 
         # Restore original mtimes
         for file_path, mtime in original_mtime.items():

@@ -11,17 +11,13 @@ binaries. This behavior is only enabled if the recipe declares the
 import os
 import logging
 import shlex
-import docker
-from elftools.elf.elffile import ELFFile, ELFError
-from toltec import bash
+from elftools.elf.elffile import ELFFile
 from toltec.builder import Builder
 from toltec.recipe import Recipe
 from toltec.util import listener
+from toltec.hooks.strip import walk_elfs, run_in_container, MOUNT_SRC
 
 logger = logging.getLogger(__name__)
-
-MOUNT_SRC = "/src"
-TOOLCHAIN = "toolchain:v1.3.1"
 
 
 def register(builder: Builder) -> None:
@@ -38,33 +34,17 @@ def register(builder: Builder) -> None:
         # Search for binary objects that can be stripped
         binaries = []
 
-        for directory, _, files in os.walk(src_dir):
-            for file_name in files:
-                file_path = os.path.join(directory, file_name)
+        def filter_elfs(info: ELFFile) -> None:
+            symtab = info.get_section_by_name(".symtab")
+            if symtab is None or info.get_machine_arch() != "ARM":
+                return
 
-                try:
-                    with open(file_path, "rb") as file:
-                        info = ELFFile(file)
-                        symtab = info.get_section_by_name(".symtab")
+            dynamic = info.get_section_by_name(".dynamic")
+            rodata = info.get_section_by_name(".rodata")
+            if dynamic and rodata and rodata.data().find(b"/dev/fb0") != -1:
+                binaries.append(file_path)
 
-                        if symtab is None or info.get_machine_arch() != "ARM":
-                            continue
-
-                        dynamic = info.get_section_by_name(".dynamic")
-                        rodata = info.get_section_by_name(".rodata")
-
-                        if (
-                            dynamic
-                            and rodata
-                            and rodata.data().find(b"/dev/fb0") != -1
-                        ):
-                            binaries.append(file_path)
-                except ELFError:
-                    # Ignore non-ELF files
-                    pass
-                except IsADirectoryError:
-                    # Ignore directories
-                    pass
+        walk_elfs(src_dir, filter_elfs)
 
         if not binaries:
             logger.debug("Skipping, no arm binaries found")
@@ -94,20 +74,7 @@ def register(builder: Builder) -> None:
             + " ".join(docker_file_path(file_path) for file_path in binaries)
         )
 
-        logs = bash.run_script_in_container(
-            builder.docker,
-            image=builder.IMAGE_PREFIX + TOOLCHAIN,
-            mounts=[
-                docker.types.Mount(
-                    type="bind",
-                    source=os.path.abspath(src_dir),
-                    target=MOUNT_SRC,
-                )
-            ],
-            variables={},
-            script="\n".join(script),
-        )
-        bash.pipe_logs(logger, logs)
+        run_in_container(builder, src_dir, logger, script)
 
         # Restore original mtimes
         for file_path, mtime in original_mtime.items():
