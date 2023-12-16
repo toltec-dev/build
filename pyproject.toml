@@ -40,9 +40,9 @@ packages = [
 ]
 
 [tool.setuptools.package-data]
-toltec = ["*.py.typed"]
-"toltec.recipe_parsers" = ["*.py.typed"]
-"toltec.hooks" = ["*.py.typed"]
+toltec = ["py.typed", "*.py.typed"]
+"toltec.recipe_parsers" = ["py.typed", "*.py.typed"]
+"toltec.hooks" = ["py.typed", "*.py.typed"]
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
