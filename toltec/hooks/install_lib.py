@@ -55,7 +55,8 @@ def register(builder: Builder) -> None:
 
     add_method("is-enabled", 'systemctl --quiet is-enabled "$1" 2> /dev/null')
     add_method(
-        "is-masked", '[[ "$(systemctl is-enabled "$1" 2> /dev/null)" == "masked" ]]'
+        "is-masked",
+        '[[ "$(systemctl is-enabled "$1" 2> /dev/null)" == "masked" ]]',
     )
     add_method("is-active", 'systemctl --quiet is-active "$1" 2> /dev/null')
     add_method(
