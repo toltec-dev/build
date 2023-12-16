@@ -1,3 +1,6 @@
+"""
+Built in hooks
+"""
 __all__ = [
     "patch_rm2fb",
     "strip",

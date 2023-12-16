@@ -18,9 +18,14 @@ OXIDE_HOOK = "\nreload-oxide-apps\n"
 
 
 def register(builder: Builder) -> None:
+    """Register the hook"""
+
     @listener(builder.post_package)
     def post_package(
-        builder: Builder, package: Package, src_dir: str, pkg_dir: str
+        builder: Builder,  # pylint: disable=unused-argument
+        package: Package,
+        src_dir: str,  # pylint: disable=unused-argument
+        pkg_dir: str,
     ) -> None:
         if os.path.exists(
             os.path.join(pkg_dir, "opt/usr/share/applications")

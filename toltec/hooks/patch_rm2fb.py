@@ -10,8 +10,8 @@ binaries. This behavior is only enabled if the recipe declares the
 """
 import os
 import logging
-import docker
 import shlex
+import docker
 from elftools.elf.elffile import ELFFile, ELFError
 from toltec import bash
 from toltec.builder import Builder
@@ -25,8 +25,12 @@ TOOLCHAIN = "toolchain:v1.3.1"
 
 
 def register(builder: Builder) -> None:
+    """Register the hook"""
+
     @listener(builder.post_build)
-    def post_build(builder: Builder, recipe: Recipe, src_dir: str) -> None:
+    def post_build(  # pylint: disable=too-many-locals
+        builder: Builder, recipe: Recipe, src_dir: str
+    ) -> None:
         if "patch_rm2fb" not in recipe.flags:
             return
 
@@ -49,11 +53,7 @@ def register(builder: Builder) -> None:
                         dynamic = info.get_section_by_name(".dynamic")
                         rodata = info.get_section_by_name(".rodata")
 
-                        if (
-                            dynamic
-                            and rodata
-                            and rodata.data().find(b"/dev/fb0") != -1
-                        ):
+                        if dynamic and rodata and rodata.data().find(b"/dev/fb0") != -1:
                             binaries.append(file_path)
                 except ELFError:
                     # Ignore non-ELF files

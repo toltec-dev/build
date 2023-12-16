@@ -22,8 +22,12 @@ TOOLCHAIN = "toolchain:v1.3.1"
 
 
 def register(builder: Builder) -> None:
+    """Register the hook"""
+
     @listener(builder.post_build)
-    def post_build(builder: Builder, recipe: Recipe, src_dir: str) -> None:
+    def post_build(  # pylint: disable=too-many-locals,too-many-branches
+        builder: Builder, recipe: Recipe, src_dir: str
+    ) -> None:
         if "nostrip" in recipe.flags:
             logger.debug("Skipping strip ('nostrip' flag is set)")
             return
@@ -73,9 +77,7 @@ def register(builder: Builder) -> None:
         if strip_x86:
             script.append(
                 "strip --strip-all -- "
-                + " ".join(
-                    docker_file_path(file_path) for file_path in strip_x86
-                )
+                + " ".join(docker_file_path(file_path) for file_path in strip_x86)
             )
 
             logger.debug("x86 binaries to be stripped:")
@@ -89,9 +91,7 @@ def register(builder: Builder) -> None:
         if strip_arm:
             script.append(
                 '"${CROSS_COMPILE}strip" --strip-all -- '
-                + " ".join(
-                    docker_file_path(file_path) for file_path in strip_arm
-                )
+                + " ".join(docker_file_path(file_path) for file_path in strip_arm)
             )
 
             logger.debug("ARM binaries to be stripped:")

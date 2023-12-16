@@ -4,10 +4,9 @@ Build hook to automatically add install-lib helper functions
 After the artifacts are packaged, this hook will look for known install-lib
 methods and add them to scripts if found.
 """
-import os
 import logging
 
-from typing import Tuple
+from typing import Set, Iterable
 from toltec.builder import Builder
 from toltec.recipe import Package
 from toltec.util import listener
@@ -17,14 +16,23 @@ logger = logging.getLogger(__name__)
 METHODS = {}
 
 
-def add_method(name: str, src: str, *depends: Tuple[str]) -> None:
-    METHODS[name] = (src, depends)
+def add_method(name: str, src: str, *depends: Iterable[str]) -> None:
+    """Add a method to be automatically added to scripts that use it"""
+    METHODS[name] = (
+        src,
+        depends,
+    )
 
 
 def register(builder: Builder) -> None:
+    """Register the hook"""
+
     @listener(builder.post_package)
     def post_package(
-        builder: Builder, package: Package, src_dir: str, pkg_dir: str
+        builder: Builder,  # pylint: disable=unused-argument
+        package: Package,
+        src_dir: str,  # pylint: disable=unused-argument
+        pkg_dir: str,  # pylint: disable=unused-argument
     ) -> None:
         for name in (
             "configure",
@@ -35,13 +43,13 @@ def register(builder: Builder) -> None:
             "preupgrade",
         ):
             function = getattr(package, name)
-            methods = set()
-            for method, (src, depends) in METHODS.items():
+            methods: Set[str] = set()
+            for method in METHODS:  # pylint: disable=consider-using-dict-items
                 if method in function:
-                    print(f"Found: {method}")
-                    methods |= set([method]) | set(depends)
+                    methods.add(method)
+                    src, depends = METHODS[method]
+                    methods.update(depends)  # type: ignore
 
-            print(f"Adding {methods}")
             for method in methods:
                 src, depends = METHODS[method]
                 function = f"""
