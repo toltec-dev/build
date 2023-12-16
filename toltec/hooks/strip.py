@@ -30,7 +30,7 @@ def walk_elfs(src_dir: str, for_each: Callable) -> None:
 
             try:
                 with open(file_path, "rb") as file:
-                    for_each(ELFFile(file))
+                    for_each(ELFFile(file), file_path)
             except ELFError:
                 # Ignore non-ELF files
                 pass
@@ -74,7 +74,7 @@ def register(builder: Builder) -> None:
         strip_arm: List[str] = []
         strip_x86: List[str] = []
 
-        def filter_elfs(info: ELFFile) -> None:
+        def filter_elfs(info: ELFFile, file_path: str) -> None:
             symtab = info.get_section_by_name(".symtab")
             if not symtab:
                 return

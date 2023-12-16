@@ -34,7 +34,7 @@ def register(builder: Builder) -> None:
         # Search for binary objects that can be stripped
         binaries = []
 
-        def filter_elfs(info: ELFFile) -> None:
+        def filter_elfs(info: ELFFile, file_path: str) -> None:
             symtab = info.get_section_by_name(".symtab")
             if symtab is None or info.get_machine_arch() != "ARM":
                 return
