@@ -54,7 +54,7 @@ build: .venv-build/bin/activate
 
 standalone: .venv-build/bin/activate
 	. .venv-build/bin/activate; \
-	python -m PyInstaller toltecmk.spec
+	python -m PyInstaller --distpath . toltecmk.spec
 
 test: .venv-runtime/bin/activate
 	. .venv-runtime/bin/activate; \
