@@ -17,6 +17,8 @@ from toltec.util import listener
 
 logger = logging.getLogger(__name__)
 
+MOUNT_SRC = "/src"
+
 
 def register(builder: Builder) -> None:
     @listener(builder.post_build)
@@ -34,15 +36,14 @@ def register(builder: Builder) -> None:
                 file_path = os.path.join(directory, file_name)
 
                 try:
-                    with open(file_path, "rb") as file:
-                        info = ELFFile(file)
-                        symtab = info.get_section_by_name(".symtab")
+                    info = ELFFile.load_from_path(file_path)
+                    symtab = info.get_section_by_name(".symtab")
 
-                        if symtab:
-                            if info.get_machine_arch() == "ARM":
-                                strip_arm.append(file_path)
-                            elif info.get_machine_arch() in ("x86", "x64"):
-                                strip_x86.append(file_path)
+                    if symtab:
+                        if info.get_machine_arch() == "ARM":
+                            strip_arm.append(file_path)
+                        elif info.get_machine_arch() in ("x86", "x64"):
+                            strip_x86.append(file_path)
                 except ELFError:
                     # Ignore non-ELF files
                     pass
@@ -60,11 +61,11 @@ def register(builder: Builder) -> None:
 
         # Run strip on found binaries
         script = []
-        mount_src = "/src"
 
-        docker_file_path = lambda file_path: shlex.quote(
-            os.path.join(mount_src, os.path.relpath(file_path, src_dir))
-        )
+        def docker_file_path(file_path: str) -> str:
+            return shlex.quote(
+                os.path.join(MOUNT_SRC, os.path.relpath(file_path, src_dir))
+            )
 
         # Strip debugging symbols and unneeded sections
         if strip_x86:
@@ -106,7 +107,7 @@ def register(builder: Builder) -> None:
                     docker.types.Mount(
                         type="bind",
                         source=os.path.abspath(src_dir),
-                        target=mount_src,
+                        target=MOUNT_SRC,
                     )
                 ],
                 variables={},
