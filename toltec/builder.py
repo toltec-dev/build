@@ -9,8 +9,10 @@ import re
 import os
 import logging
 import textwrap
+from importlib.util import find_spec, module_from_spec
 import docker
 import requests
+from . import hooks
 from . import bash, util, ipk
 from .recipe import RecipeBundle, Recipe, Package
 from .version import DependencyKind
@@ -49,6 +51,17 @@ class Builder:  # pylint: disable=too-few-public-methods
 Please check that the service is running and that you have the necessary \
 permissions."
             ) from err
+
+        for hook in hooks.__all__:
+            spec = find_spec(f"toltec.hooks.{hook}")
+            if spec:
+                module = module_from_spec(spec)
+                spec.loader.exec_module(module)  # type: ignore
+                module.register(self)  # type: ignore
+            else:
+                raise RuntimeError(
+                    f"Hook module 'toltec.hooks.{hook}' couldn’t be loaded"
+                )
 
     def __enter__(self) -> "Builder":
         return self
@@ -123,6 +136,7 @@ permissions."
         self,
         recipe_bundle: RecipeBundle,
         build_matrix: Optional[Mapping[str, Optional[List[Package]]]] = None,
+        check_directory: bool = True,
     ) -> bool:
         """
         Build packages defined by a recipe.
@@ -132,7 +146,7 @@ permissions."
             (default: all supported packages for each architecture)
         :returns: true if all the requested packages were built correctly
         """
-        if not util.check_directory(
+        if check_directory and not util.check_directory(
             self.work_dir,
             f"The build directory '{self.work_dir}' \
 already exists.\nWould you like to [c]ancel, [r]emove that directory, \
