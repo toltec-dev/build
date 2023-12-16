@@ -18,6 +18,7 @@ from toltec.util import listener
 logger = logging.getLogger(__name__)
 
 MOUNT_SRC = "/src"
+TOOLCHAIN = "toolchain:v1.3.1"
 
 
 def register(builder: Builder) -> None:
@@ -36,14 +37,15 @@ def register(builder: Builder) -> None:
                 file_path = os.path.join(directory, file_name)
 
                 try:
-                    info = ELFFile.load_from_path(file_path)
-                    symtab = info.get_section_by_name(".symtab")
+                    with open(file_path, "rb") as file:
+                        info = ELFFile(file)
+                        symtab = info.get_section_by_name(".symtab")
 
-                    if symtab:
-                        if info.get_machine_arch() == "ARM":
-                            strip_arm.append(file_path)
-                        elif info.get_machine_arch() in ("x86", "x64"):
-                            strip_x86.append(file_path)
+                        if symtab:
+                            if info.get_machine_arch() == "ARM":
+                                strip_arm.append(file_path)
+                            elif info.get_machine_arch() in ("x86", "x64"):
+                                strip_x86.append(file_path)
                 except ELFError:
                     # Ignore non-ELF files
                     pass
@@ -102,7 +104,7 @@ def register(builder: Builder) -> None:
 
             logs = bash.run_script_in_container(
                 builder.docker,
-                image=builder.IMAGE_PREFIX + "toolchain:v2.1",
+                image=builder.IMAGE_PREFIX + TOOLCHAIN,
                 mounts=[
                     docker.types.Mount(
                         type="bind",

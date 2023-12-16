@@ -167,7 +167,6 @@ def register(builder: Builder) -> None:
     ) -> None:
         for name in (
             "configure",
-            "postinstall",
             "postremove",
             "postupgrade",
             "preinstall",
@@ -176,12 +175,12 @@ def register(builder: Builder) -> None:
         ):
             function = getattr(package, name)
             methods = set()
-            for method, (src, depends) in METHODS:
+            for method, (src, depends) in METHODS.items():
                 if method in function:
-                    methods |= set([method]) + set(depends)
+                    methods |= set([method]) | set(depends)
 
             for method in methods:
-                src = METHODS[method][0]
+                src, depends = METHODS[method]
                 setattr(
                     package,
                     name,

@@ -5,6 +5,7 @@
 import argparse
 import os
 import sys
+import toltec.hooks
 from importlib.util import find_spec, spec_from_file_location, module_from_spec
 from typing import Dict, List, Optional
 from toltec import parse_recipe
@@ -81,6 +82,18 @@ def main() -> int:
     recipe_bundle = parse_recipe(args.recipe_dir)
 
     with Builder(args.work_dir, args.dist_dir) as builder:
+        # Load built in hooks
+        for hook in toltec.hooks.__all__:
+            spec = find_spec(f"toltec.hooks.{hook}")
+            if spec:
+                module = module_from_spec(spec)
+                spec.loader.exec_module(module)  # type: ignore
+                module.register(builder)  # type: ignore
+            else:
+                raise RuntimeError(
+                    f"Hook module 'toltec.hooks.{hook}' couldn’t be loaded"
+                )
+
         if args.hook:
             for ident in args.hook:
                 if ident and ident[0] in (".", "/"):
