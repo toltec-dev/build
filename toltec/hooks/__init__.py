@@ -1,6 +1,7 @@
 __all__ = [
-    "install_lib",
     "patch_rm2fb",
-    "reload_oxide_apps",
     "strip",
+    "reload_oxide_apps",  # Depends on install_lib
+    # This hook needs to come after any hooks that may depend on it
+    "install_lib",
 ]
