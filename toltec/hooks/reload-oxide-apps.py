@@ -14,7 +14,7 @@ from toltec.util import listener
 
 logger = logging.getLogger(__name__)
 
-oxide_hook = """
+OXIDE_HOOK = """
 if systemctl --quiet is-active tarnish.service 2> /dev/null; then
     echo -n "Reloading Oxide applications: "
     local ret
@@ -42,6 +42,6 @@ def register(builder: Builder) -> None:
         if os.path.exists(
             os.path.join(pkg_dir, "opt/usr/share/applications")
         ) or os.path.exists(os.path.join(pkg_dir, "opt/etc/draft")):
-            package.configure += oxide_hook
-            package.postupgrade += oxide_hook
-            package.postremove += oxide_hook
+            package.configure += OXIDE_HOOK
+            package.postupgrade += OXIDE_HOOK
+            package.postremove += OXIDE_HOOK
