@@ -86,10 +86,11 @@ jobs:
           cache: 'pip'
       - name: Building toltecmk
         run: make build
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: pip
           path: dist/*
+          if-no-files-found: error
   standalone:
     name: Make Standalone
     runs-on: ubuntu-20.04
@@ -104,13 +105,14 @@ jobs:
           cache: 'pip'
       - name: Building toltecmk
         run: make standalone
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: toltecmk
           path: toltecmk
+          if-no-files-found: error
   publish:
     name: Publish to PyPi
-    runs-on: ubuntu-20
+    runs-on: ubuntu-20.04
     needs: [build, links]
     if: github.repository == 'toltec-dev/build' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
     permissions:
@@ -121,7 +123,7 @@ jobs:
     steps:
       - name: Download pip packages
         id: download
-        uses: action/download-artifact@v4
+        uses: actions/download-artifact@v4
         with:
           name: pip
       - name: Publish package distributions to PyPI
