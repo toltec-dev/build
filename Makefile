@@ -33,13 +33,13 @@ export USAGE
 help:
 	@echo "$$USAGE"
 
-.venv-build/bin/activate:
+.venv-build/bin/activate: requirements.build.txt
 	@echo "Setting up development virtual env in .venv"
 	python -m venv .venv-build; \
 	. .venv-build/bin/activate; \
 	python -m pip install -r requirements.build.txt
 
-.venv-runtime/bin/activate:
+.venv-runtime/bin/activate: requirements.txt
 	@echo "Setting up development virtual env in .venv"
 	python -m venv .venv-runtime; \
 	. .venv-runtime/bin/activate; \

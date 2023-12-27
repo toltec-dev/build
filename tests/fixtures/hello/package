@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Copyright (c) 2023 The Toltec Contributors
+# SPDX-License-Identifier: MIT
+
+pkgnames=(hello)
+pkgdesc="Hello World!"
+timestamp=2023-12-27T00:58Z
+maintainer="Eeems <eeem@eeems.email>"
+url="https://github.com/toltec-dev/build"
+license=MIT
+pkgver=0.0.1-1
+section="utils"
+flags=()
+
+image=base:v2.1
+source=(hello.c)
+sha256sums=(SKIP)
+
+build() {
+    export CC="${CROSS_COMPILE}gcc"
+    "$CC" -o hello hello.c
+}
+package() {
+    install -D -m 755 "$srcdir"/hello "$pkgdir"/opt/bin/hello
+}
