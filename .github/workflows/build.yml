@@ -1,10 +1,11 @@
 name: Check and Build
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
   workflow_dispatch:
+  release:
+    types: [released]
 permissions: read-all
 jobs:
   format:
@@ -116,7 +117,7 @@ jobs:
     name: Publish to PyPi
     runs-on: ubuntu-20.04
     needs: [build, links]
-    if: github.repository == 'toltec-dev/build' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+    if: github.repository == 'toltec-dev/build' && github.event_name == 'release' && startsWith(github.ref, 'refs/tags')
     permissions:
       id-token: write
     environment:
@@ -132,3 +133,31 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: ${{ steps.download.outputs.download-path }}
+  release:
+    name: Add ${{ matrix.artifact }} to release
+    if: github.repository == 'toltec-dev/build' && github.event_name == 'release' && startsWith(github.ref, 'refs/tags')
+    needs: [standalone, build]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        artifact:
+          - 'pip'
+          - 'toltecmk'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout the Git repository
+        uses: actions/checkout@v4
+      - name: Download executable
+        id: download
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist
+      - name: Upload to release
+        run:
+          find . -type f | xargs -rI {} gh release upload "$TAG" {} --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        working-directory: ${{ steps.download.outputs.download-path }}
