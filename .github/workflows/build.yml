@@ -105,6 +105,8 @@ jobs:
           cache: 'pip'
       - name: Building toltecmk
         run: make standalone
+      - name: Sanity check
+        run: ./toltecmk --help
       - uses: actions/upload-artifact@v4
         with:
           name: toltecmk
