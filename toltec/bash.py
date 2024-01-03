@@ -26,9 +26,8 @@ class ScriptError(Exception):
 # from the result of `get_declarations()`. Subset of the list at:
 # <https://www.gnu.org/software/bash/manual/html_node/Bash-Variables.html>
 default_variables = {
+    "_",
     "BASH",
-    "BASHOPTS",
-    "BASHPID",
     "BASH_ALIASES",
     "BASH_ARGC",
     "BASH_ARGV",
@@ -36,10 +35,13 @@ default_variables = {
     "BASH_CMDS",
     "BASH_COMMAND",
     "BASH_LINENO",
+    "BASH_LOADABLES_PATH",
     "BASH_SOURCE",
     "BASH_SUBSHELL",
     "BASH_VERSINFO",
     "BASH_VERSION",
+    "BASHOPTS",
+    "BASHPID",
     "COLUMNS",
     "COMP_WORDBREAKS",
     "DIRSTACK",
@@ -78,8 +80,36 @@ default_variables = {
     "SRANDOM",
     "TERM",
     "UID",
-    "_",
 }
+
+
+def _get_bash_stdout(src: str) -> str:
+    """
+    Get the stdout from a bash script
+
+    :param src: bash script to run
+    :returns: the stdout of the script
+    """
+    env: Dict[str, str] = {
+        "PATH": os.environ["PATH"],
+    }
+
+    subshell = subprocess.run(  # pylint:disable=subprocess-run-check
+        ["/usr/bin/env", "bash"],
+        input=src.encode(),
+        capture_output=True,
+        env=env,
+    )
+
+    errors = subshell.stderr.decode()
+
+    if subshell.returncode == 2 or "syntax error" in errors:
+        raise ScriptError(f"Bash syntax error\n{errors}")
+
+    if subshell.returncode != 0 or errors:
+        raise ScriptError(f"Bash error\n{errors}")
+
+    return subshell.stdout.decode()
 
 
 def get_declarations(src: str) -> Tuple[Variables, Functions]:
@@ -97,28 +127,7 @@ def get_declarations(src: str) -> Tuple[Variables, Functions]:
 declare -f
 declare -p
 """
-    env: Dict[str, str] = {
-        "PATH": os.environ["PATH"],
-    }
-
-    declarations_subshell = (
-        subprocess.run(  # pylint:disable=subprocess-run-check
-            ["/usr/bin/env", "bash"],
-            input=src.encode(),
-            capture_output=True,
-            env=env,
-        )
-    )
-
-    errors = declarations_subshell.stderr.decode()
-
-    if declarations_subshell.returncode == 2 or "syntax error" in errors:
-        raise ScriptError(f"Bash syntax error\n{errors}")
-
-    if declarations_subshell.returncode != 0 or errors:
-        raise ScriptError(f"Bash error\n{errors}")
-
-    declarations = declarations_subshell.stdout.decode()
+    declarations = _get_bash_stdout(src)
 
     # Parse `declare` statements and function statements
     lexer = shlex.shlex(declarations, posix=True)
@@ -319,7 +328,10 @@ def _parse_var(lexer: shlex.shlex) -> Tuple[str, Optional[Any]]:
         else:
             string_token = lexer.get_token() or ""
             if string_token == "$":
-                string_token = lexer.get_token() or ""
+                quoted_string = lexer.get_token() or ""
+                string_token = _get_bash_stdout(
+                    "echo -n $" + shlex.quote(quoted_string)
+                )
             var_value = _parse_string(string_token)
     else:
         lexer.push_token(lookahead)

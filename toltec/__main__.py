@@ -14,7 +14,7 @@ from toltec.repo import make_index
 from toltec import util
 
 
-def main() -> int:
+def main() -> int:  # pylint:disable=too-many-branches
     """Execute requested commands and return appropriate exit code."""
     parser = argparse.ArgumentParser(description=__doc__)
 

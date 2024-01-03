@@ -1,6 +1,6 @@
 [project]
 name = "toltecmk"
-version = "0.2.1"
+version = "0.3.0"
 authors = [
   { name="Mattéo Delabre", email="git.matteo@delab.re" },
   { name="Eeems", email="eeems@eeems.email" },
@@ -40,9 +40,9 @@ packages = [
 ]
 
 [tool.setuptools.package-data]
-toltec = ["*.py.typed"]
-"toltec.recipe_parsers" = ["*.py.typed"]
-"toltec.hooks" = ["*.py.typed"]
+toltec = ["py.typed", "*.py.typed"]
+"toltec.recipe_parsers" = ["py.typed", "*.py.typed"]
+"toltec.hooks" = ["py.typed", "*.py.typed"]
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}

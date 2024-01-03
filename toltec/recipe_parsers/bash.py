@@ -407,8 +407,7 @@ def _pop_field_string(
     if not isinstance(value, str):
         raise RecipeError(
             path,
-            f"Field '{name}' must be a string, \
-got a {type(value).__name__}",
+            f"Field '{name}' must be a string, got a {type(value).__name__}",
         )
 
     return value
@@ -428,10 +427,10 @@ def _pop_field_indexed(
     value = variables.pop(name)
 
     if not isinstance(value, list):
+        _name = type(value).__name__
         raise RecipeError(
             path,
-            f"Field '{name}' must be an indexed array, \
-got a {type(value).__name__}",
+            f"Field '{name}' must be an indexed array, got a {_name}",
         )
 
     return value

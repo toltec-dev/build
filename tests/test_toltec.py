@@ -39,9 +39,11 @@ class TestBuild(unittest.TestCase):
                     rec_dir,
                 ],
                 capture_output=True,
+                check=False,
             )
-
-            self.assertEqual(result.returncode, 0)
+            self.assertEqual(
+                result.returncode, 0, result.stderr.decode("utf-8")
+            )
             self.assertEqual(result.stdout.decode("utf-8"), "")
             self.assertEqual(
                 result.stderr.decode("utf-8"),
