@@ -45,7 +45,7 @@ def run_in_container(
     """Run a script in a container and log output"""
     logs = bash.run_script_in_container(
         builder.docker,
-        image=builder.IMAGE_PREFIX + TOOLCHAIN,
+        image=builder.get_image_prefix() + TOOLCHAIN,
         mounts=[
             docker.types.Mount(
                 type="bind",
