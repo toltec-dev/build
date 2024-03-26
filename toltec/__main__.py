@@ -73,6 +73,17 @@ def main() -> int:  # pylint:disable=too-many-branches
         either a dot or a slash""",
     )
 
+    # add an argument for image_prefix, which defaults to "ghcr.io/toltec-dev/"
+
+    parser.add_argument(
+        "-I",
+        "--image-prefix",
+        metavar="IMAGEPREFIX",
+        default="ghcr.io/toltec-dev/",
+        help="""prefix to use for the container image name (default:
+        ghcr.io/toltec-dev/)""",
+    )
+
     util.argparse_add_verbose(parser)
     util.argparse_add_warning(parser)
     args = parser.parse_args()
@@ -80,7 +91,7 @@ def main() -> int:  # pylint:disable=too-many-branches
 
     recipe_bundle = parse_recipe(args.recipe_dir)
 
-    with Builder(args.work_dir, args.dist_dir) as builder:
+    with Builder(args.work_dir, args.dist_dir, args.image_prefix) as builder:
         if args.hook:
             for ident in args.hook:
                 if ident and ident[0] in (".", "/"):

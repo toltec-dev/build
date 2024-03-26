@@ -19,7 +19,7 @@ from toltec.util import listener
 logger = logging.getLogger(__name__)
 
 MOUNT_SRC = "/src"
-TOOLCHAIN = "toolchain:v1.3.1"
+TOOLCHAIN = "toolchain:latest"
 
 
 def walk_elfs(src_dir: str, for_each: Callable) -> None:
@@ -45,7 +45,7 @@ def run_in_container(
     """Run a script in a container and log output"""
     logs = bash.run_script_in_container(
         builder.docker,
-        image=builder.IMAGE_PREFIX + TOOLCHAIN,
+        image=builder.get_image_prefix() + TOOLCHAIN,
         mounts=[
             docker.types.Mount(
                 type="bind",

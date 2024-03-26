@@ -31,9 +31,20 @@ class Builder:  # pylint: disable=too-few-public-methods
     URL_REGEX = re.compile(r"[a-z]+://")
 
     # Prefix for all Toltec Docker images
-    IMAGE_PREFIX = "ghcr.io/toltec-dev/"
+    # For example, https://ghcr.io/toltec-dev/rust:v3 which resolves to
+    # https://github.com/toltec-dev/toolchain/pkgs/container/rust
+    DEFAULT_IMAGE_PREFIX = "ghcr.io/toltec-dev/"
 
-    def __init__(self, work_dir: str, dist_dir: str) -> None:
+    def get_image_prefix(self) -> str:
+        """Get the prefix for all Toltec Docker images."""
+        if self.image_prefix:
+            # If the image prefix doesn't end with a slash, add one.
+            if not self.image_prefix.endswith("/"):
+                return self.image_prefix + "/"
+            return self.image_prefix
+        return self.DEFAULT_IMAGE_PREFIX
+
+    def __init__(self, work_dir: str, dist_dir: str, image_prefix: str) -> None:
         """
         Create a builder helper.
 
@@ -42,6 +53,7 @@ class Builder:  # pylint: disable=too-few-public-methods
         """
         self.work_dir = work_dir
         self.dist_dir = dist_dir
+        self.image_prefix = image_prefix
 
         try:
             self.docker = docker.from_env()
@@ -348,7 +360,7 @@ source file '{source.url}', got {req.status_code}"
 
         logs = bash.run_script_in_container(
             self.docker,
-            image=self.IMAGE_PREFIX + recipe.image,
+            image=self.get_image_prefix() + recipe.image,
             mounts=[
                 docker.types.Mount(
                     type="bind",
