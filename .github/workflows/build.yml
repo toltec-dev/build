@@ -17,9 +17,9 @@ jobs:
         python: ['3.11', '3.12']
     steps:
       - name: Checkout the Git repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
           cache: 'pip'
@@ -34,9 +34,9 @@ jobs:
         python: ['3.11', '3.12']
     steps:
       - name: Checkout the Git repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
           cache: 'pip'
@@ -47,7 +47,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout the Git repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
@@ -65,9 +65,9 @@ jobs:
         python: ['3.11', '3.12']
     steps:
       - name: Checkout the Git repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
           cache: 'pip'
@@ -79,9 +79,9 @@ jobs:
     needs: [format, lint, test]
     steps:
       - name: Checkout the Git repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: 'pip'
@@ -98,9 +98,9 @@ jobs:
     needs: [format, lint, test]
     steps:
       - name: Checkout the Git repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: 'pip'
