@@ -7,7 +7,8 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[],
-    hiddenimports=[f"toltec.hooks.{x}" for x in toltec.hooks.__all__],
+    hiddenimports=[f"toltec.hooks.{x}" for x in toltec.hooks.__all__]
+    + ["pkg_resources.extern"],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
