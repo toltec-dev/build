@@ -180,7 +180,7 @@ def register(builder: Builder) -> None:
     )
     add_method(
         "unit-exists",
-        '[ "$(systemctl --quiet list-unit-files "${1}" | grep -c "${1}")" -eq 1 ]',
+        '[ "$(systemctl --quiet list-unit-files "${1}" | /bin/grep -c "${1}" 2> /dev/null)" -eq 1 ]',  # pylint: disable=line-too-long
     )
     add_method(
         "disable-unit",
