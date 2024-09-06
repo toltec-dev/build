@@ -344,7 +344,7 @@ def _parse_func(lexer: shlex.shlex) -> Tuple[int, int]:
     assert lexer.get_token() == "{"
     brace_depth = 1
 
-    start_byte = lexer.instream.tell()
+    start_byte = lexer.instream.tell()  # type: ignore
 
     while brace_depth > 0:
         token = lexer.get_token()
@@ -355,7 +355,7 @@ def _parse_func(lexer: shlex.shlex) -> Tuple[int, int]:
         elif token == "}":
             brace_depth -= 1
 
-    end_byte = lexer.instream.tell() - 1
+    end_byte = lexer.instream.tell() - 1  # type: ignore
     return start_byte, end_byte
 
 

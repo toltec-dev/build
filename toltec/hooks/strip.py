@@ -5,6 +5,7 @@ After the build() script is run, and before the artifacts are packaged, this
 hook looks for ELF-files in the build directory and strips them. This
 behavior is disabled if the recipe declares the 'nostrip' flag.
 """
+
 import os
 import logging
 import shlex

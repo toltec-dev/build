@@ -5,6 +5,7 @@ After the artifacts are packaged, this hook looks for files in either
 /opt/etc/draft or /opt/usr/share/applications and adds reload-oxide-apps to
 configure, postupgrade, and postremove
 """
+
 import os
 import logging
 
