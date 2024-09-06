@@ -4,6 +4,7 @@ Build hook to automatically add install-lib helper functions
 After the artifacts are packaged, this hook will look for known install-lib
 methods and add them to scripts if found.
 """
+
 import logging
 
 from typing import Set, Iterable

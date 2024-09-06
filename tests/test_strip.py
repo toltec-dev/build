@@ -55,11 +55,14 @@ class TestBuild(unittest.TestCase):
             dist_dir = path.join(tmp_dir, "dist")
             shutil.copytree(src_dir, rec_dir)
             replacements = {"flags=()": "flags=(nostrip)"}
-            with open(
-                path.join(src_dir, "package"), "rt", encoding="utf-8"
-            ) as infile, open(
-                path.join(rec_dir, "package"), "wt", encoding="utf-8"
-            ) as outfile:
+            with (
+                open(
+                    path.join(src_dir, "package"), "rt", encoding="utf-8"
+                ) as infile,
+                open(
+                    path.join(rec_dir, "package"), "wt", encoding="utf-8"
+                ) as outfile,
+            ):
                 for line in infile:
                     for src, target in replacements.items():
                         line = line.replace(src, target)

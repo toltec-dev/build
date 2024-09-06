@@ -79,9 +79,11 @@ def _compare_version_parts(left: str, right: str) -> bool:
 
     def map_alpha(string: str, length: int) -> tuple[int, ...]:
         return tuple(
-            _ALPHA_SORT_KEY.index(string[i])
-            if i in range(len(string))
-            else _ALPHA_SORT_KEY.index(None)
+            (
+                _ALPHA_SORT_KEY.index(string[i])
+                if i in range(len(string))
+                else _ALPHA_SORT_KEY.index(None)
+            )
             for i in range(length)
         )
 

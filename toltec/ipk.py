@@ -143,9 +143,11 @@ def write(
     :param pkg_dir: directory containing the package tree to include in the
         data sub-archive, leave empty to generate an empty data archive
     """
-    with BytesIO() as control, BytesIO() as data, _targz_open(
-        file, epoch
-    ) as archive:
+    with (
+        BytesIO() as control,
+        BytesIO() as data,
+        _targz_open(file, epoch) as archive,
+    ):
         root_info = tarfile.TarInfo("./")
         root_info.type = tarfile.DIRTYPE
         archive.addfile(_clean_info(None, epoch, root_info))

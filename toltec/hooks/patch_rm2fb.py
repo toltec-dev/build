@@ -8,6 +8,7 @@ It then uses patchelf to add a dependency on librm2fb_client.so.1 to the
 binaries. This behavior is only enabled if the recipe declares the
 'patch_rm2fb' flag.
 """
+
 import os
 import logging
 import shlex
