@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Parse recipes from Bash files."""
 
+import copy
 import warnings
 from itertools import product
 from typing import Any, Dict, Generator, Iterable, Optional, Tuple
@@ -62,8 +63,8 @@ def _instantiate_arch(
     assert archs is not None
 
     for arch in archs:
-        loc_vars: bash.Variables = variables.copy()
-        loc_funcs: bash.Functions = functions.copy()
+        loc_vars: bash.Variables = copy.deepcopy(variables)
+        loc_funcs: bash.Functions = copy.deepcopy(functions)
         loc_vars["arch"] = arch
 
         # Merge variables suffixed with the selected architecture
@@ -88,28 +89,29 @@ def _instantiate_arch(
 
             if name not in loc_vars:
                 loc_vars[name] = value
-            else:
-                normal_value = loc_vars[name]
+                continue
 
-                if isinstance(normal_value, str):
-                    if not isinstance(value, str):
-                        raise RecipeError(
-                            path,
-                            f"Field '{name}' was declared several times with \
+            normal_value = loc_vars[name]
+
+            if isinstance(normal_value, str):
+                if not isinstance(value, str):
+                    raise RecipeError(
+                        path,
+                        f"Field '{name}' was declared several times with \
 different types",
-                        )
+                    )
 
-                    loc_vars[name] = value
+                loc_vars[name] = value
 
-                if isinstance(normal_value, list):
-                    if not isinstance(value, list):
-                        raise RecipeError(
-                            path,
-                            f"Field '{name}' was declared several times with \
+            if isinstance(normal_value, list):
+                if not isinstance(value, list):
+                    raise RecipeError(
+                        path,
+                        f"Field '{name}' was declared several times with \
 different types",
-                        )
+                    )
 
-                    normal_value.extend(value)
+                normal_value.extend(value)
 
         yield arch or "", loc_vars, loc_funcs
 
@@ -219,8 +221,8 @@ build() step",
         variables["pkgname"] = pkg_name
         attrs["packages"][pkg_name] = _parse_package(
             result,
-            variables.copy(),
-            raw_vars.copy(),
+            copy.deepcopy(variables),
+            copy.deepcopy(raw_vars),
             functions,
         )
     else:
@@ -254,7 +256,7 @@ corresponding package",
             attrs["packages"][sub_pkg_name] = _parse_package(
                 result,
                 pkg_vars,
-                raw_vars.copy(),
+                copy.deepcopy(raw_vars),
                 {**functions, **pkg_funcs},
             )
 
