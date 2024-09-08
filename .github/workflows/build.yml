@@ -10,7 +10,7 @@ permissions: read-all
 jobs:
   format:
     name: Check formatting
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -27,7 +27,7 @@ jobs:
         run: make format
   lint:
     name: Check for erroneous constructs
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -44,7 +44,7 @@ jobs:
         run: make lint
   links:
     name: Check Markdown links
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout the Git repository
         uses: actions/checkout@v4
@@ -58,7 +58,7 @@ jobs:
           make links
   test:
     name: Run tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -75,7 +75,7 @@ jobs:
         run: make test
   build:
     name: Make pip packages
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     needs: [format, lint, test]
     steps:
       - name: Checkout the Git repository
@@ -94,7 +94,7 @@ jobs:
           if-no-files-found: error
   standalone:
     name: Make Standalone
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     needs: [format, lint, test]
     steps:
       - name: Checkout the Git repository
@@ -115,7 +115,7 @@ jobs:
           if-no-files-found: error
   publish:
     name: Publish to PyPi
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     needs: [build, links]
     if: github.repository == 'toltec-dev/build' && github.event_name == 'release' && startsWith(github.ref, 'refs/tags')
     permissions:
