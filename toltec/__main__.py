@@ -103,6 +103,9 @@ def main() -> int:  # pylint:disable=too-many-branches
             build_matrix = {}
 
             for arch, recipes in recipe_bundle.items():
+                if args.arch_name and arch not in args.arch_name:
+                    continue
+
                 if args.package_name:
                     build_matrix[arch] = [
                         recipes.packages[pkg_name]

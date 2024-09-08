@@ -58,7 +58,8 @@ standalone: .venv-build/bin/activate
 
 test: .venv-runtime/bin/activate
 	. .venv-runtime/bin/activate; \
-	python -m unittest
+	python -m unittest; \
+	tests/foobar/test.sh
 
 format: .venv-build/bin/activate
 	. .venv-build/bin/activate; \
