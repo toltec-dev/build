@@ -43,8 +43,10 @@ Name    | Meaning
 `rmall` | Packages which work on all reMarkable devices without modification.
 `rm1`   | Packages requiring reMarkable 1-specific resources or compilation flags.
 `rm2`   | Packages requiring reMarkable 2-specific resources or compilation flags.
+`rmpp`  | Packages requiring reMarkable Paper Pro-specific resources or compilation flags.
 
 For example, use `archs=(rm1)` for a package that only works on reMarkable 1, or `archs=(rm1 rm2)` for a package that works both on reMarkable 1 and reMarkable 2 but needs different dependencies or compilation flags for each of those.
+DO NOT USE `rmall` for packages with any binaries, since aarch32 binaries will not work on aarch64 devices and vice versa.
 
 In the following sections, you can add a suffix to any field to specify that its value only applies to a given architecture.
 For string fields, the arch-specific value will replace the unsuffixed value; for array fields, it will be appended to the unsuffixed value.
@@ -230,6 +232,8 @@ Should match the upstream name as closely as possible.
 The `build()` function runs in the context of a Docker container with the chosen `image`.
 This function has access to all the metadata variables declared above, plus the `$arch` variable which contains the name of the architecture the recipe is currently being built for.
 The working directory is `$srcdir`, which is populated with all the sources declared in `sources`.
+Do note that if you are going to build aarch64 binaries, you must switch to suitable environment variables by sourcing `/opt/x-tools/switch-aarch64.sh`.
+If you need to go back to aarch32, you can source `/opt/x-tools/switch-arm.sh`.
 
 ### Package Section
 
