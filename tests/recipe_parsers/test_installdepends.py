@@ -35,7 +35,7 @@ class TestInstallDepends(unittest.TestCase):
         with open(path.join(rec_path, "package"), "w") as rec_def_file:
             rec_def_file.write(
                 """
-archs=(rmall rmallos2 rmallos3 rm1 rm1os2 rm1os3 rm2 rm2os2 rm2os3)
+archs=(rmall rmallos2 rmallos3 rm1 rm1os2 rm1os3 rm2 rm2os2 rm2os3 rmpp rmppos3)
 pkgnames=(toltec-base)
 pkgdesc="Metapackage defining the base set of packages in a Toltec install"
 url=https://toltec-dev.org/
@@ -49,6 +49,8 @@ installdepends_rm1os2=(open-remarkable-shutdown)
 installdepends_rm1os3=(open-remarkable-shutdown)
 installdepends_rm2os2=(rm2-suspend-fix)
 installdepends_rm2os3=(rm2-suspend-fix)
+installdepends_rmpp=(rmpp-make-root-rw)
+installdepends_rmppos3=(rmpp-make-root-rw)
 
 image=base:v2.1
 source=("https://example.org/toltec/${pkgnames[0]}/release-${pkgver%-*}.zip")
@@ -80,6 +82,7 @@ package() {
             Dependency(DependencyKind.HOST, "open-remarkable-shutdown")
         ]
         rm2_depends = [Dependency(DependencyKind.HOST, "rm2-suspend-fix")]
+        rmpp_depends = [Dependency(DependencyKind.HOST, "rmpp-make-root-rw")]
 
         recipes = parse_recipe(rec_path)
 
@@ -95,6 +98,8 @@ package() {
                 "rm2",
                 "rm2os2",
                 "rm2os3",
+                "rmpp",
+                "rmppos3",
             ],
         )
         recipe = recipes["rmall"]
@@ -176,4 +181,22 @@ package() {
         self.assertEqual(
             package.installdepends,
             set(basic_depends + rm2_depends),
+        )
+
+        recipe = recipes["rmpp"]
+        self.assertIs(type(recipe), Recipe)
+        package = recipe.packages["toltec-base"]
+        self.assertEqual(list(recipe.packages.keys()), ["toltec-base"])
+        self.assertEqual(
+            package.installdepends,
+            set(basic_depends + rmpp_depends),
+        )
+
+        recipe = recipes["rmppos3"]
+        self.assertIs(type(recipe), Recipe)
+        package = recipe.packages["toltec-base"]
+        self.assertEqual(list(recipe.packages.keys()), ["toltec-base"])
+        self.assertEqual(
+            package.installdepends,
+            set(basic_depends + rmpp_depends),
         )
