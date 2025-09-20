@@ -5,6 +5,7 @@ After the artifacts are packaged, this hook will look for known install-lib
 methods and add them to scripts if found.
 """
 
+import inspect
 import logging
 
 from typing import Set, Iterable
@@ -20,7 +21,7 @@ METHODS = {}
 def add_method(name: str, src: str, *depends: Iterable[str]) -> None:
     """Add a method to be automatically added to scripts that use it"""
     METHODS[name] = (
-        src,
+        inspect.cleandoc(src),
         depends,
     )
 
@@ -152,7 +153,7 @@ def register(builder: Builder) -> None:
 
     [Install]
     WantedBy=local-fs.target
-UNIT
+    UNIT
 
     systemctl daemon-reload
     systemctl enable "$unit_name"
