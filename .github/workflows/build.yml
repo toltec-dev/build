@@ -14,7 +14,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ['3.11', '3.12']
+        python:
+          - '3.11'
+          - '3.12'
+          - '3.13'
     steps:
       - name: Checkout the Git repository
         uses: actions/checkout@v4
@@ -31,7 +34,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ['3.11', '3.12']
+        python:
+          - '3.11'
+          - '3.12'
+          - '3.13'
     steps:
       - name: Checkout the Git repository
         uses: actions/checkout@v4
@@ -62,7 +68,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ['3.11', '3.12']
+        python:
+          - '3.11'
+          - '3.12'
+          - '3.13'
     steps:
       - name: Checkout the Git repository
         uses: actions/checkout@v4
@@ -83,7 +92,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.13'
           cache: 'pip'
       - name: Building toltecmk
         run: make build
@@ -102,7 +111,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.13'
           cache: 'pip'
       - name: Building toltecmk
         run: make standalone
