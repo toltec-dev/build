@@ -152,7 +152,7 @@ def register(builder: Builder) -> None:
 
     [Install]
     WantedBy=local-fs.target
-    UNIT
+UNIT
 
     systemctl daemon-reload
     systemctl enable "$unit_name"
