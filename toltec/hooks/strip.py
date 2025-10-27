@@ -20,7 +20,7 @@ from toltec.util import listener
 logger = logging.getLogger(__name__)
 
 MOUNT_SRC = "/src"
-TOOLCHAIN = "toolchain:v1.3.1"
+TOOLCHAIN = "toolchain:v3.1"
 
 
 def walk_elfs(src_dir: str, for_each: Callable) -> None:

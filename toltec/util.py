@@ -203,7 +203,7 @@ def auto_extract(archive_path: str, dest_path: str) -> bool:
     return False
 
 
-def _auto_extract(  # pylint:disable=too-many-arguments,disable=too-many-locals
+def _auto_extract(  # pylint:disable=too-many-arguments,disable=too-many-locals,disable=too-many-positional-arguments
     members: List[str],
     getinfo: Callable[[str], Any],
     extract: Callable[[Any], Optional[IO[bytes]]],
