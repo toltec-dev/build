@@ -35,7 +35,7 @@ class TestInstallDepends(unittest.TestCase):
         with open(path.join(rec_path, "package"), "w") as rec_def_file:
             rec_def_file.write(
                 """
-archs=(rmall rmallos2 rmallos3 rm1 rm1os2 rm1os3 rm2 rm2os2 rm2os3 rmpp rmppos3)
+archs=(rmall rmallos2 rmallos3 rm1 rm1os2 rm1os3 rm2 rm2os2 rm2os3 rmpp rmppos3 rmppm rmppmos3)
 pkgnames=(toltec-base)
 pkgdesc="Metapackage defining the base set of packages in a Toltec install"
 url=https://toltec-dev.org/

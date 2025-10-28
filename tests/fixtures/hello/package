@@ -11,8 +11,9 @@ license=MIT
 pkgver=0.0.1-1
 section="utils"
 flags=()
+archs=(rm1 rmpp)
 
-image=base:v2.1
+image=base:v4.0
 source=(hello.c)
 sha256sums=(SKIP)
 

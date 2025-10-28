@@ -349,7 +349,7 @@ source file '{source.url}', got {req.status_code}"
             )
 
         if recipe.arch.startswith('rmpp'):
-            pre_script.extend(
+            pre_script.append(
                 (
                     "source /opt/x-tools/switch-aarch64.sh"
                 )
