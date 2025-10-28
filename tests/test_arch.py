@@ -39,7 +39,11 @@ class TestBuild(unittest.TestCase):
                 result.returncode, 0, result.stderr.decode("utf-8")
             )
             self.assertEqual(result.stdout.decode("utf-8"), "")
-            with open(path.join(tmp_dir, "build", "rm1", "src", "hello"), 'rb') as f:
+            with open(
+                path.join(tmp_dir, "build", "rm1", "src", "hello"), "rb"
+            ) as f:
                 self.assertEqual(ELFFile(f).get_machine_arch(), "ARM")
-            with open(path.join(tmp_dir, "build", "rmpp", "src", "hello"), 'rb') as f:
+            with open(
+                path.join(tmp_dir, "build", "rmpp", "src", "hello"), "rb"
+            ) as f:
                 self.assertEqual(ELFFile(f).get_machine_arch(), "AArch64")

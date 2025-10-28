@@ -145,11 +145,12 @@ def register(builder: Builder) -> None:
         if strip_aarch64:
             script.extend(
                 (
-                    'source /opt/x-tools/switch-aarch64.sh',
+                    "source /opt/x-tools/switch-aarch64.sh",
                     '"${CROSS_COMPILE}strip" --strip-all -- '
                     + " ".join(
-                        docker_file_path(file_path) for file_path in strip_aarch64
-                    )
+                        docker_file_path(file_path)
+                        for file_path in strip_aarch64
+                    ),
                 )
             )
 

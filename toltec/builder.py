@@ -316,8 +316,14 @@ source file '{source.url}', got {req.status_code}"
             )
 
         if host_deps:
-            opkg_conf_path = "$SYSROOT_AARCH64/etc/opkg/opkg.conf" if recipe.arch.startswith('rmpp') else "$SYSROOT/etc/opkg/opkg.conf"
-            opkg_exec = "opkg-aarch64" if recipe.arch.startswith('rmpp') else "opkg"
+            opkg_conf_path = (
+                "$SYSROOT_AARCH64/etc/opkg/opkg.conf"
+                if recipe.arch.startswith("rmpp")
+                else "$SYSROOT/etc/opkg/opkg.conf"
+            )
+            opkg_exec = (
+                "opkg-aarch64" if recipe.arch.startswith("rmpp") else "opkg"
+            )
 
             pre_script.extend(
                 (
@@ -348,12 +354,8 @@ source file '{source.url}', got {req.status_code}"
                 )
             )
 
-        if recipe.arch.startswith('rmpp'):
-            pre_script.append(
-                (
-                    "source /opt/x-tools/switch-aarch64.sh"
-                )
-            )
+        if recipe.arch.startswith("rmpp"):
+            pre_script.append(("source /opt/x-tools/switch-aarch64.sh"))
 
         logs = bash.run_script_in_container(
             self.docker,
