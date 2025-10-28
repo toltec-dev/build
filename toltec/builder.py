@@ -324,13 +324,23 @@ source file '{source.url}', got {req.status_code}"
             opkg_exec = (
                 "opkg-aarch64" if recipe.arch.startswith("rmpp") else "opkg"
             )
+            opkg_arch = (
+                "aarch64-3.10"
+                if recipe.arch.startswith("rmpp")
+                else "armv7-3.2"
+            )
+            opkg_src = (
+                "aarch64-k3.10"
+                if recipe.arch.startswith("rmpp")
+                else "armv7sf-k3.2"
+            )
 
             pre_script.extend(
                 (
                     'echo -n "dest root /',
                     "arch all 100",
-                    f"arch {'aarch64-3.10' if recipe.arch.startswith('rmpp') else 'armv7-3.2'} 160",
-                    f"src/gz entware https://bin.entware.net/{'aarch64-k3.10' if recipe.arch.startswith('rmpp') else 'armv7sf-k3.2'}",
+                    f"arch {opkg_arch} 160",
+                    f"src/gz entware https://bin.entware.net/{opkg_src}",
                     "arch rmall 200",
                     "src/gz toltec-rmall file:///repo/rmall",
                     f'" > "{opkg_conf_path}"',
