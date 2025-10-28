@@ -274,7 +274,8 @@ source file '{source.url}', got {req.status_code}"
         )
         bash.pipe_logs(logger, logs, "prepare()")
 
-    def _build(self, recipe: Recipe, src_dir: str) -> None: #pylint: disable=too-many-locals
+    # pylint: disable=too-many-locals
+    def _build(self, recipe: Recipe, src_dir: str) -> None:
         """Build artifacts for a recipe."""
         if not recipe.build:
             logger.debug("Skipping build (nothing to do)")
