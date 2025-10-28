@@ -348,12 +348,12 @@ source file '{source.url}', got {req.status_code}"
                 )
             )
 
-            if recipe.arch.startswith('rmpp'):
-                pre_script.extend(
-                    (
-                        "source /opt/x-tools/switch-aarch64.sh"
-                    )
+        if recipe.arch.startswith('rmpp'):
+            pre_script.extend(
+                (
+                    "source /opt/x-tools/switch-aarch64.sh"
                 )
+            )
 
         logs = bash.run_script_in_container(
             self.docker,
