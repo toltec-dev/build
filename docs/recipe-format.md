@@ -232,8 +232,6 @@ Should match the upstream name as closely as possible.
 The `build()` function runs in the context of a Docker container with the chosen `image`.
 This function has access to all the metadata variables declared above, plus the `$arch` variable which contains the name of the architecture the recipe is currently being built for.
 The working directory is `$srcdir`, which is populated with all the sources declared in `sources`.
-If you are going to build aarch64 binaries, you must switch to suitable environment variables by sourcing `/opt/x-tools/switch-aarch64.sh`.
-If you need to go back to ARMv7, you can source `/opt/x-tools/switch-arm.sh`.
 
 ### Package Section
 
