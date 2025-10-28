@@ -51,6 +51,8 @@ installdepends_rm2os2=(rm2-suspend-fix)
 installdepends_rm2os3=(rm2-suspend-fix)
 installdepends_rmpp=(rmpp-make-root-rw)
 installdepends_rmppos3=(rmpp-make-root-rw)
+installdepends_rmppm=(rmpp-make-root-rw)
+installdepends_rmppmos3=(rmpp-make-root-rw)
 
 image=base:v2.1
 source=("https://example.org/toltec/${pkgnames[0]}/release-${pkgver%-*}.zip")
@@ -83,6 +85,7 @@ package() {
         ]
         rm2_depends = [Dependency(DependencyKind.HOST, "rm2-suspend-fix")]
         rmpp_depends = [Dependency(DependencyKind.HOST, "rmpp-make-root-rw")]
+        rmppm_depends = [Dependency(DependencyKind.HOST, "rmpp-make-root-rw")]
 
         recipes = parse_recipe(rec_path)
 
@@ -100,6 +103,8 @@ package() {
                 "rm2os3",
                 "rmpp",
                 "rmppos3",
+                "rmppm",
+                "rmppmos3",
             ],
         )
         recipe = recipes["rmall"]
@@ -199,4 +204,22 @@ package() {
         self.assertEqual(
             package.installdepends,
             set(basic_depends + rmpp_depends),
+        )
+
+        recipe = recipes["rmppm"]
+        self.assertIs(type(recipe), Recipe)
+        package = recipe.packages["toltec-base"]
+        self.assertEqual(list(recipe.packages.keys()), ["toltec-base"])
+        self.assertEqual(
+            package.installdepends,
+            set(basic_depends + rmppm_depends),
+        )
+
+        recipe = recipes["rmppmos3"]
+        self.assertIs(type(recipe), Recipe)
+        package = recipe.packages["toltec-base"]
+        self.assertEqual(list(recipe.packages.keys()), ["toltec-base"])
+        self.assertEqual(
+            package.installdepends,
+            set(basic_depends + rmppm_depends),
         )

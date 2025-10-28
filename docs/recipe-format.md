@@ -44,6 +44,7 @@ Name    | Meaning
 `rm1`   | Packages requiring reMarkable 1-specific resources or compilation flags.
 `rm2`   | Packages requiring reMarkable 2-specific resources or compilation flags.
 `rmpp`  | Packages requiring reMarkable Paper Pro-specific resources or compilation flags.
+`rmppm` | Packages requiring reMarkable Paper Pro Move-specific resources or compilation flags.
 
 For example, use `archs=(rm1)` for a package that only works on reMarkable 1, or `archs=(rm1 rm2)` for a package that works both on reMarkable 1 and reMarkable 2 but needs different dependencies or compilation flags for each of those.
 
