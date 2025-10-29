@@ -7,15 +7,15 @@ import shlex
 import subprocess
 import logging
 from collections import deque
-from typing import Deque, Dict, Generator, List, Optional, Tuple, Union
+from collections.abc import Generator
 from docker.client import DockerClient
 
-AssociativeArray = Dict[str, str]
-IndexedArray = List[Optional[str]]
+AssociativeArray = dict[str, str]
+IndexedArray = list[str | None]
 LogGenerator = Generator[str, None, None]
-Any = Union[str, AssociativeArray, IndexedArray]
-Variables = Dict[str, Optional[Any]]
-Functions = Dict[str, str]
+Any = str | AssociativeArray | IndexedArray
+Variables = dict[str, Any | None]
+Functions = dict[str, str]
 
 
 class ScriptError(Exception):
@@ -36,6 +36,7 @@ default_variables = {
     "BASH_COMMAND",
     "BASH_LINENO",
     "BASH_LOADABLES_PATH",
+    "BASH_MONOSECONDS",
     "BASH_SOURCE",
     "BASH_SUBSHELL",
     "BASH_VERSINFO",
@@ -90,7 +91,7 @@ def _get_bash_stdout(src: str) -> str:
     :param src: bash script to run
     :returns: the stdout of the script
     """
-    env: Dict[str, str] = {
+    env: dict[str, str] = {
         "PATH": os.environ["PATH"],
     }
 
@@ -112,7 +113,7 @@ def _get_bash_stdout(src: str) -> str:
     return subshell.stdout.decode()
 
 
-def get_declarations(src: str) -> Tuple[Variables, Functions]:
+def get_declarations(src: str) -> tuple[Variables, Functions]:
     """
     Extract all variables and functions defined by a Bash script.
 
@@ -225,7 +226,7 @@ def _generate_string(string: str) -> str:
 def _parse_indexed(lexer: shlex.shlex) -> IndexedArray:
     """Parse an indexed Bash array."""
     assert lexer.get_token() == "("
-    result: List[Optional[str]] = []
+    result: list[str | None] = []
 
     while True:
         token = lexer.get_token()
@@ -304,7 +305,7 @@ def _generate_assoc(array: AssociativeArray) -> str:
     )
 
 
-def _parse_var(lexer: shlex.shlex) -> Tuple[str, Optional[Any]]:
+def _parse_var(lexer: shlex.shlex) -> tuple[str, Any | None]:
     """Parse a variable declaration."""
     flags_token = lexer.get_token()
     assert flags_token is not None
@@ -315,7 +316,7 @@ def _parse_var(lexer: shlex.shlex) -> Tuple[str, Optional[Any]]:
         var_flags = set()
 
     var_name = lexer.get_token()
-    var_value: Optional[Any] = None
+    var_value: Any | None = None
     lookahead = lexer.get_token()
     assert var_name is not None
     assert lookahead is not None
@@ -339,7 +340,7 @@ def _parse_var(lexer: shlex.shlex) -> Tuple[str, Optional[Any]]:
     return var_name, var_value
 
 
-def _parse_func(lexer: shlex.shlex) -> Tuple[int, int]:
+def _parse_func(lexer: shlex.shlex) -> tuple[int, int]:
     """Find the starting and end bounds of a function declaration."""
     assert lexer.get_token() == "{"
     brace_depth = 1
@@ -402,7 +403,7 @@ def run_script(variables: Variables, script: str) -> LogGenerator:
 def run_script_in_container(
     docker: DockerClient,
     image: str,
-    mounts: List,
+    mounts: list,
     variables: Variables,
     script: str,
 ) -> LogGenerator:
@@ -469,7 +470,7 @@ def pipe_logs(
     :param max_lines_on_fail: number of context lines to print
         in non-debug mode
     """
-    log_buffer: Deque[str] = deque()
+    log_buffer: deque[str] = deque()
 
     try:
         for line in logs:

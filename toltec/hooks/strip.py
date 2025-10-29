@@ -9,7 +9,7 @@ behavior is disabled if the recipe declares the 'nostrip' flag.
 import os
 import logging
 import shlex
-from typing import Callable, List
+from typing import Callable
 import docker
 from elftools.elf.elffile import ELFFile, ELFError
 from toltec import bash
@@ -20,7 +20,7 @@ from toltec.util import listener
 logger = logging.getLogger(__name__)
 
 MOUNT_SRC = "/src"
-TOOLCHAIN = "toolchain:v4.0"
+TOOLCHAIN = "python:v4.0"
 
 
 def walk_elfs(src_dir: str, for_each: Callable) -> None:
@@ -41,7 +41,7 @@ def walk_elfs(src_dir: str, for_each: Callable) -> None:
 
 
 def run_in_container(
-    builder: Builder, src_dir: str, _logger: logging.Logger, script: List[str]
+    builder: Builder, src_dir: str, _logger: logging.Logger, script: list[str]
 ) -> None:
     """Run a script in a container and log output"""
     logs = bash.run_script_in_container(
@@ -60,6 +60,19 @@ def run_in_container(
     bash.pipe_logs(_logger, logs)
 
 
+def restore_mtime_script(original_mtime: dict[str, int]) -> list[str]:
+    """Restore original mtimes for files after they have been modified"""
+    script: list[str] = []
+    for file_path, mtime in original_mtime.items():
+        script.append(
+            'echo "import os; os.utime('
+            + f'\\"{file_path}\\", ns=({mtime}, {mtime})'
+            + ')" | python3 -u'
+        )
+
+    return script
+
+
 def register(builder: Builder) -> None:
     """Register the hook"""
 
@@ -72,9 +85,9 @@ def register(builder: Builder) -> None:
             return
 
         # Search for binary objects that can be stripped
-        strip_arm: List[str] = []
-        strip_aarch64: List[str] = []
-        strip_x86: List[str] = []
+        strip_arm: list[str] = []
+        strip_aarch64: list[str] = []
+        strip_x86: list[str] = []
 
         def filter_elfs(info: ELFFile, file_path: str) -> None:
             symtab = info.get_section_by_name(".symtab")
@@ -96,18 +109,20 @@ def register(builder: Builder) -> None:
         # Save original mtimes to restore them afterwards
         # This will prevent any Makefile rules to be triggered again
         # in packaging scripts that use `make install`
-        original_mtime = {}
-
-        for file_path in strip_arm + strip_x86:
-            original_mtime[file_path] = os.stat(file_path).st_mtime_ns
-
-        # Run strip on found binaries
-        script = []
+        original_mtime: dict[str, int] = {}
 
         def docker_file_path(file_path: str) -> str:
             return shlex.quote(
                 os.path.join(MOUNT_SRC, os.path.relpath(file_path, src_dir))
             )
+
+        for file_path in strip_arm + strip_x86:
+            original_mtime[docker_file_path(file_path)] = os.stat(
+                file_path
+            ).st_mtime_ns
+
+        # Run strip on found binaries
+        script: list[str] = []
 
         # Strip debugging symbols and unneeded sections
         if strip_x86:
@@ -162,8 +177,5 @@ def register(builder: Builder) -> None:
                     os.path.relpath(file_path, src_dir),
                 )
 
+        script += restore_mtime_script(original_mtime)
         run_in_container(builder, src_dir, logger, script)
-
-        # Restore original mtimes
-        for file_path, mtime in original_mtime.items():
-            os.utime(file_path, ns=(mtime, mtime))

@@ -3,7 +3,7 @@
 """Build recipes and create packages."""
 
 import shutil
-from typing import List, Mapping, Optional, Type
+from collections.abc import Mapping
 from types import TracebackType
 import re
 import os
@@ -40,11 +40,11 @@ class Builder:  # pylint: disable=too-few-public-methods
         :param work_dir: directory where packages are built
         :param dist_dir: directory where built packages are stored
         """
-        self.work_dir = work_dir
-        self.dist_dir = dist_dir
+        self.work_dir: str = work_dir
+        self.dist_dir: str = dist_dir
 
         try:
-            self.docker = docker.from_env()
+            self.docker: docker.DockerClient = docker.from_env()
         except docker.errors.DockerException as err:
             raise BuildError(
                 "Unable to connect to the Docker daemon. \
@@ -56,6 +56,7 @@ permissions."
             spec = find_spec(f"toltec.hooks.{hook}")
             if spec:
                 module = module_from_spec(spec)
+                assert spec.loader is not None
                 spec.loader.exec_module(module)  # type: ignore
                 module.register(self)  # type: ignore
             else:
@@ -68,9 +69,9 @@ permissions."
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
     ) -> None:
         self.docker.close()
 
@@ -135,7 +136,7 @@ permissions."
     def make(
         self,
         recipe_bundle: RecipeBundle,
-        build_matrix: Optional[Mapping[str, Optional[List[Package]]]] = None,
+        build_matrix: Mapping[str, list[Package] | None] | None = None,
         check_directory: bool = True,
     ) -> bool:
         """
@@ -175,7 +176,7 @@ or [k]eep it (not recommended)?",
         self,
         recipe: Recipe,
         build_dir: str,
-        packages: Optional[List[Package]] = None,
+        packages: list[Package] | None = None,
     ) -> bool:
         self.post_parse(recipe)
 
@@ -226,7 +227,9 @@ or [k]eep it (not recommended)?",
 
             if self.URL_REGEX.match(source.url) is None:
                 # Get source file from the recipe’s directory
-                shutil.copy2(os.path.join(recipe.path, source.url), local_path)
+                _ = shutil.copy2(
+                    os.path.join(recipe.path, source.url), local_path
+                )
             else:
                 # Fetch source file from the network
                 req = requests.get(source.url, timeout=(3.05, 300))
@@ -239,15 +242,15 @@ source file '{source.url}', got {req.status_code}"
 
                 with open(local_path, "wb") as local:
                     for chunk in req.iter_content(chunk_size=1024):
-                        local.write(chunk)
+                        _ = local.write(chunk)
 
             # Verify checksum
             file_sha = util.file_sha256(local_path)
             if source.checksum not in ("SKIP", file_sha):
                 raise BuildError(
                     f"Invalid checksum for source file {source.url}:\n"
-                    f"  expected {source.checksum}\n"
-                    f"  actual   {file_sha}"
+                    + f"  expected {source.checksum}\n"
+                    + f"  actual   {file_sha}"
                 )
 
             # Automatically extract source archives
@@ -258,19 +261,34 @@ source file '{source.url}', got {req.status_code}"
                         local_path,
                     )
 
-    @staticmethod
-    def _prepare(recipe: Recipe, src_dir: str) -> None:
+    def _prepare(self, recipe: Recipe, src_dir: str) -> None:
         """Prepare source files before building."""
         if not recipe.prepare:
             logger.debug("Skipping prepare (nothing to do)")
             return
 
         logger.info("Preparing source files")
-        logs = bash.run_script(
-            script=recipe.prepare,
+        mount_src = "/src"
+        repo_src = "/repo"
+        logs = bash.run_script_in_container(
+            self.docker,
+            image=self.IMAGE_PREFIX + recipe.image,
+            mounts=[
+                docker.types.Mount(
+                    type="bind",
+                    source=os.path.abspath(src_dir),
+                    target=mount_src,
+                ),
+                docker.types.Mount(
+                    type="bind",
+                    source=os.path.abspath(self.dist_dir),
+                    target=repo_src,
+                ),
+            ],
             variables={
-                "srcdir": src_dir,
+                "srcdir": mount_src,
             },
+            script=recipe.prepare,
         )
         bash.pipe_logs(logger, logs, "prepare()")
 
@@ -292,11 +310,11 @@ source file '{source.url}', got {req.status_code}"
         mount_src = "/src"
         repo_src = "/repo"
         uid = os.getuid()
-        pre_script: List[str] = []
+        pre_script: list[str] = []
 
         # Install required dependencies
-        build_deps = []
-        host_deps = []
+        build_deps: list[str] = []
+        host_deps: list[str] = []
 
         for dep in recipe.makedepends:
             if dep.kind == DependencyKind.BUILD:
@@ -310,9 +328,10 @@ source file '{source.url}', got {req.status_code}"
                     "export DEBIAN_FRONTEND=noninteractive",
                     "apt-get update -qq",
                     "apt-get install -qq --no-install-recommends"
-                    ' -o Dpkg::Options::="--force-confdef"'
-                    ' -o Dpkg::Options::="--force-confold"'
-                    " -- " + " ".join(build_deps),
+                    + ' -o Dpkg::Options::="--force-confdef"'
+                    + ' -o Dpkg::Options::="--force-confold"'
+                    + " -- "
+                    + " ".join(build_deps),
                 )
             )
 
@@ -361,7 +380,8 @@ source file '{source.url}', got {req.status_code}"
                 (
                     f"{opkg_exec} update --verbosity=0",
                     f"{opkg_exec} install --verbosity=0 --no-install-recommends"
-                    " -- " + " ".join(host_deps),
+                    + " -- "
+                    + " ".join(host_deps),
                 )
             )
 
@@ -397,16 +417,37 @@ source file '{source.url}', got {req.status_code}"
         )
         bash.pipe_logs(logger, logs, "build()")
 
-    @staticmethod
-    def _package(package: Package, src_dir: str, pkg_dir: str) -> None:
+    def _package(self, package: Package, src_dir: str, pkg_dir: str) -> None:
         """Make a package from a recipe’s build artifacts."""
         logger.info("Packaging build artifacts for %s", package.name)
-        logs = bash.run_script(
-            script=package.package,
+        mount_src = "/src"
+        repo_src = "/repo"
+        pkg_src = "/pkg"
+        logs = bash.run_script_in_container(
+            self.docker,
+            image=self.IMAGE_PREFIX + package.parent.image,
+            mounts=[
+                docker.types.Mount(
+                    type="bind",
+                    source=os.path.abspath(src_dir),
+                    target=mount_src,
+                ),
+                docker.types.Mount(
+                    type="bind",
+                    source=os.path.abspath(self.dist_dir),
+                    target=repo_src,
+                ),
+                docker.types.Mount(
+                    type="bind",
+                    source=os.path.abspath(pkg_dir),
+                    target=pkg_src,
+                ),
+            ],
             variables={
-                "srcdir": src_dir,
-                "pkgdir": pkg_dir,
+                "srcdir": mount_src,
+                "pkgdir": pkg_src,
             },
+            script=package.package,
         )
 
         bash.pipe_logs(logger, logs, "package()")
@@ -426,7 +467,7 @@ source file '{source.url}', got {req.status_code}"
         logger.info("Creating archive %s", package.filename())
 
         # Convert install scripts to Debian format
-        scripts = {}
+        scripts: dict[str, str] = {}
         script_header = textwrap.dedent(
             """\
             #!/usr/bin/env bash

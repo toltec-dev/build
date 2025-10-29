@@ -5,7 +5,8 @@
 import copy
 import warnings
 from itertools import product
-from typing import Any, Dict, Generator, Iterable, Optional, Tuple
+from typing import Any
+from collections.abc import Generator, Iterable
 import os
 import dateutil.parser
 from ..version import (
@@ -50,7 +51,7 @@ def _instantiate_arch(
     path: str,
     variables: bash.Variables,
     functions: bash.Functions,
-) -> Generator[Tuple[str, bash.Variables, bash.Functions], None, None]:
+) -> Generator[tuple[str, bash.Variables, bash.Functions], None, None]:
     """
     Instantiate a recipe definition for each supported architecture.
 
@@ -130,7 +131,7 @@ def _parse_recipe(  # pylint: disable=too-many-locals, disable=too-many-statemen
     :raises RecipeError: if the recipe contains an error
     :returns: loaded recipe
     """
-    attrs: Dict[str, Any] = {}
+    attrs: dict[str, Any] = {}
     attrs["path"] = path
     raw_vars: bash.Variables = {}
 
@@ -285,7 +286,7 @@ def _parse_package(  # pylint: disable=too-many-locals, disable=too-many-stateme
     :param functions: functions declared in the package
     :raises RecipeError: if the package contains an error
     """
-    attrs: Dict[str, Any] = {}
+    attrs: dict[str, Any] = {}
     attrs["parent"] = parent
 
     # Parse fields
@@ -397,7 +398,7 @@ def _pop_field_string(
     path: str,
     variables: bash.Variables,
     name: str,
-    default: Optional[str] = None,
+    default: str | None = None,
 ) -> str:
     if name not in variables:
         if default is None:
@@ -419,7 +420,7 @@ def _pop_field_indexed(
     path: str,
     variables: bash.Variables,
     name: str,
-    default: Optional[bash.IndexedArray] = None,
+    default: bash.IndexedArray | None = None,
 ) -> bash.IndexedArray:
     if name not in variables:
         if default is None:

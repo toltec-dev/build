@@ -33,7 +33,7 @@ prepare() {
 
 build() {
     pip3 install okp
-    make
+    make -j$(nporc)
 }
 
 bufshot() {

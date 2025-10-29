@@ -8,7 +8,7 @@ methods and add them to scripts if found.
 import inspect
 import logging
 
-from typing import Set, Iterable
+from collections.abc import Iterable
 from toltec.builder import Builder
 from toltec.recipe import Package
 from toltec.util import listener
@@ -45,7 +45,7 @@ def register(builder: Builder) -> None:
             "preupgrade",
         ):
             function = getattr(package, name)
-            methods: Set[str] = set()
+            methods: set[str] = set()
             for method in METHODS:  # pylint: disable=consider-using-dict-items
                 if method in function:
                     methods.add(method)
