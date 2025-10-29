@@ -35,12 +35,14 @@ help:
 
 .venv-build/bin/activate: requirements.build.txt
 	@echo "Setting up development virtual env in .venv"
+	set -e; \
 	python -m venv .venv-build; \
 	. .venv-build/bin/activate; \
 	python -m pip install -r requirements.build.txt
 
 .venv-runtime/bin/activate: requirements.txt
 	@echo "Setting up development virtual env in .venv"
+	set -e; \
 	python -m venv .venv-runtime; \
 	. .venv-runtime/bin/activate; \
 	python -m pip install -r requirements.txt
@@ -49,27 +51,33 @@ clean:
 	git clean --force -dX
 
 build: .venv-build/bin/activate
+	set -e; \
 	. .venv-build/bin/activate; \
 	python -m build
 
 standalone: .venv-build/bin/activate
+	set -e; \
 	. .venv-build/bin/activate; \
 	python -m PyInstaller --distpath . toltecmk.spec
 
 test: .venv-runtime/bin/activate
+	set -e; \
 	. .venv-runtime/bin/activate; \
 	python -m unittest; \
 	tests/foobar/test.sh
 
 format: .venv-build/bin/activate
+	set -e; \
 	. .venv-build/bin/activate; \
 	black --line-length 80 --check --diff toltec tests
 
 format-fix: .venv-build/bin/activate
+	set -e; \
 	. .venv-build/bin/activate; \
 	black --line-length 80 toltec tests
 
 lint: .venv-build/bin/activate
+	set -e; \
 	. .venv-build/bin/activate; \
 	echo "==> Typechecking files"; \
 	mypy --disallow-untyped-defs toltec; \

@@ -112,9 +112,7 @@ permissions."
         """
 
     @util.hook
-    def post_package(
-        self, package: Package, src_dir: str, pkg_dir: str
-    ) -> None:
+    def post_package(self, package: Package, src_dir: str, pkg_dir: str) -> None:
         """
         Triggered after part of the artifacts from a build have been copied
         in place to the packaging directory.
@@ -195,9 +193,7 @@ or [k]eep it (not recommended)?",
         base_pkg_dir = os.path.join(build_dir, "pkg")
         os.makedirs(base_pkg_dir, exist_ok=True)
 
-        for package in (
-            packages if packages is not None else recipe.packages.values()
-        ):
+        for package in packages if packages is not None else recipe.packages.values():
             pkg_dir = os.path.join(base_pkg_dir, package.name)
             os.makedirs(pkg_dir, exist_ok=True)
 
@@ -227,9 +223,7 @@ or [k]eep it (not recommended)?",
 
             if self.URL_REGEX.match(source.url) is None:
                 # Get source file from the recipe’s directory
-                _ = shutil.copy2(
-                    os.path.join(recipe.path, source.url), local_path
-                )
+                _ = shutil.copy2(os.path.join(recipe.path, source.url), local_path)
             else:
                 # Fetch source file from the network
                 req = requests.get(source.url, timeout=(3.05, 300))
@@ -270,6 +264,8 @@ source file '{source.url}', got {req.status_code}"
         logger.info("Preparing source files")
         mount_src = "/src"
         repo_src = "/repo"
+        uid = os.getuid()
+        gid = os.getgid()
         logs = bash.run_script_in_container(
             self.docker,
             image=self.IMAGE_PREFIX + recipe.image,
@@ -288,7 +284,12 @@ source file '{source.url}', got {req.status_code}"
             variables={
                 "srcdir": mount_src,
             },
-            script=recipe.prepare,
+            script="\n".join(
+                [
+                    recipe.prepare,
+                    f'chown -R {uid}:{gid} "{mount_src}"',
+                ]
+            ),
         )
         bash.pipe_logs(logger, logs, "prepare()")
 
@@ -310,6 +311,7 @@ source file '{source.url}', got {req.status_code}"
         mount_src = "/src"
         repo_src = "/repo"
         uid = os.getuid()
+        gid = os.getgid()
         pre_script: list[str] = []
 
         # Install required dependencies
@@ -341,18 +343,12 @@ source file '{source.url}', got {req.status_code}"
                 if recipe.arch.startswith("rmpp")
                 else "$SYSROOT/etc/opkg/opkg.conf"
             )
-            opkg_exec = (
-                "opkg-aarch64" if recipe.arch.startswith("rmpp") else "opkg"
-            )
+            opkg_exec = "opkg-aarch64" if recipe.arch.startswith("rmpp") else "opkg"
             opkg_arch = (
-                "aarch64-3.10"
-                if recipe.arch.startswith("rmpp")
-                else "armv7-3.2"
+                "aarch64-3.10" if recipe.arch.startswith("rmpp") else "armv7-3.2"
             )
             opkg_src = (
-                "aarch64-k3.10"
-                if recipe.arch.startswith("rmpp")
-                else "armv7sf-k3.2"
+                "aarch64-k3.10" if recipe.arch.startswith("rmpp") else "armv7sf-k3.2"
             )
 
             pre_script.extend(
@@ -411,7 +407,7 @@ source file '{source.url}', got {req.status_code}"
                     *pre_script,
                     f'cd "{mount_src}"',
                     recipe.build,
-                    f'chown -R {uid}:{uid} "{mount_src}"',
+                    f'chown -R {uid}:{gid} "{mount_src}"',
                 )
             ),
         )
@@ -420,32 +416,10 @@ source file '{source.url}', got {req.status_code}"
     def _package(self, package: Package, src_dir: str, pkg_dir: str) -> None:
         """Make a package from a recipe’s build artifacts."""
         logger.info("Packaging build artifacts for %s", package.name)
-        mount_src = "/src"
-        repo_src = "/repo"
-        pkg_src = "/pkg"
-        logs = bash.run_script_in_container(
-            self.docker,
-            image=self.IMAGE_PREFIX + package.parent.image,
-            mounts=[
-                docker.types.Mount(
-                    type="bind",
-                    source=os.path.abspath(src_dir),
-                    target=mount_src,
-                ),
-                docker.types.Mount(
-                    type="bind",
-                    source=os.path.abspath(self.dist_dir),
-                    target=repo_src,
-                ),
-                docker.types.Mount(
-                    type="bind",
-                    source=os.path.abspath(pkg_dir),
-                    target=pkg_src,
-                ),
-            ],
+        logs = bash.run_script(
             variables={
-                "srcdir": mount_src,
-                "pkgdir": pkg_src,
+                "srcdir": src_dir,
+                "pkgdir": pkg_dir,
             },
             script=package.package,
         )
@@ -456,9 +430,7 @@ source file '{source.url}', got {req.status_code}"
         for filename in util.list_tree(pkg_dir):
             logger.debug(
                 " - %s",
-                os.path.normpath(
-                    os.path.join("/", os.path.relpath(filename, pkg_dir))
-                ),
+                os.path.normpath(os.path.join("/", os.path.relpath(filename, pkg_dir))),
             )
 
     @staticmethod
@@ -503,9 +475,7 @@ source file '{source.url}', got {req.status_code}"
                 )
 
         for step in ("pre", "post"):
-            if getattr(package, step + "upgrade") or getattr(
-                package, step + "remove"
-            ):
+            if getattr(package, step + "upgrade") or getattr(package, step + "remove"):
                 script = script_header
 
                 for action in ("upgrade", "remove"):
