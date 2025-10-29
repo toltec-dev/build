@@ -20,6 +20,7 @@ class TestRecipe(unittest.TestCase):
             timestamp=datetime.now(),
             sources=set(),
             makedepends=set(),
+            preparedepends=set(),
             maintainer="Test <test@example.com>",
             image="",
             arch="armv7-3.2",
