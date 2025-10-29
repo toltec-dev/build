@@ -273,7 +273,7 @@ source file '{source.url}', got {req.status_code}"
         gid = os.getgid()
         logs = bash.run_script_in_container(
             self.docker,
-            image=self.IMAGE_PREFIX + recipe.image,
+            image=self.IMAGE_PREFIX + "toolchain:v4.0",
             mounts=[
                 docker.types.Mount(
                     type="bind",
@@ -288,8 +288,6 @@ source file '{source.url}', got {req.status_code}"
                 [
                     f'cd "{mount_src}"',
                     recipe.prepare,
-                    # f"find {mount_src} -group $(id -g) -exec chgrp {gid} {{}} +",
-                    # f"find {mount_src} -group $(id -u) -exec chown {uid} {{}} +",
                     f"chown -R {uid}:{gid} {mount_src}",
                 ]
             ),
@@ -416,8 +414,6 @@ source file '{source.url}', got {req.status_code}"
                     *pre_script,
                     f'cd "{mount_src}"',
                     recipe.build,
-                    # f"find {mount_src} {repo_src} -group $(id -g) -exec chgrp {gid} {{}} +",
-                    # f"find {mount_src} {repo_src} -group $(id -u) -exec chown {uid} {{}} +",
                     f"chown -R {uid}:{gid} {mount_src} {repo_src}",
                 )
             ),
