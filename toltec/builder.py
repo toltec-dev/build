@@ -269,7 +269,6 @@ source file '{source.url}', got {req.status_code}"
 
         logger.info("Preparing source files")
         mount_src = "/src"
-        repo_src = "/repo"
         uid = os.getuid()
         gid = os.getgid()
         logs = bash.run_script_in_container(
@@ -281,20 +280,17 @@ source file '{source.url}', got {req.status_code}"
                     source=os.path.abspath(src_dir),
                     target=mount_src,
                 ),
-                docker.types.Mount(
-                    type="bind",
-                    source=os.path.abspath(self.dist_dir),
-                    target=repo_src,
-                ),
             ],
             variables={
                 "srcdir": mount_src,
             },
             script="\n".join(
                 [
+                    f'cd "{mount_src}"',
                     recipe.prepare,
-                    f"find {mount_src} {repo_src} -group $(id -g) -exec chgrp {gid} {{}} +",
-                    f"find {mount_src} {repo_src} -group $(id -u) -exec chown {uid} {{}} +",
+                    # f"find {mount_src} -group $(id -g) -exec chgrp {gid} {{}} +",
+                    # f"find {mount_src} -group $(id -u) -exec chown {uid} {{}} +",
+                    f"chown -R {uid}:{gid} {mount_src}",
                 ]
             ),
         )
@@ -420,8 +416,9 @@ source file '{source.url}', got {req.status_code}"
                     *pre_script,
                     f'cd "{mount_src}"',
                     recipe.build,
-                    f"find {mount_src} {repo_src} -group $(id -g) -exec chgrp {gid} {{}} +",
-                    f"find {mount_src} {repo_src} -group $(id -u) -exec chown {uid} {{}} +",
+                    # f"find {mount_src} {repo_src} -group $(id -g) -exec chgrp {gid} {{}} +",
+                    # f"find {mount_src} {repo_src} -group $(id -u) -exec chown {uid} {{}} +",
+                    f"chown -R {uid}:{gid} {mount_src} {repo_src}",
                 )
             ),
         )

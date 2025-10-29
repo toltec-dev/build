@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 from os import path
+import os
 import unittest
 from tempfile import TemporaryDirectory
 import subprocess
