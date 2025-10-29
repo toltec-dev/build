@@ -20,7 +20,7 @@ from toltec.util import listener
 logger = logging.getLogger(__name__)
 
 MOUNT_SRC = "/src"
-TOOLCHAIN = "toolchain:v3.1"
+TOOLCHAIN = "toolchain:v4.0"
 
 
 def walk_elfs(src_dir: str, for_each: Callable) -> None:
@@ -73,6 +73,7 @@ def register(builder: Builder) -> None:
 
         # Search for binary objects that can be stripped
         strip_arm: List[str] = []
+        strip_aarch64: List[str] = []
         strip_x86: List[str] = []
 
         def filter_elfs(info: ELFFile, file_path: str) -> None:
@@ -81,12 +82,14 @@ def register(builder: Builder) -> None:
                 return
             if info.get_machine_arch() == "ARM":
                 strip_arm.append(file_path)
+            elif info.get_machine_arch() == "AArch64":
+                strip_aarch64.append(file_path)
             elif info.get_machine_arch() in ("x86", "x64"):
                 strip_x86.append(file_path)
 
         walk_elfs(src_dir, filter_elfs)
 
-        if not strip_arm and not strip_x86:
+        if not strip_arm and not strip_aarch64 and not strip_x86:
             logger.debug("Skipping, no binaries found")
             return
 
@@ -134,6 +137,26 @@ def register(builder: Builder) -> None:
             logger.debug("ARM binaries to be stripped:")
 
             for file_path in strip_arm:
+                logger.debug(
+                    " - %s",
+                    os.path.relpath(file_path, src_dir),
+                )
+
+        if strip_aarch64:
+            script.extend(
+                (
+                    "source /opt/x-tools/switch-aarch64.sh",
+                    '"${CROSS_COMPILE}strip" --strip-all -- '
+                    + " ".join(
+                        docker_file_path(file_path)
+                        for file_path in strip_aarch64
+                    ),
+                )
+            )
+
+            logger.debug("AArch64 binaries to be stripped:")
+
+            for file_path in strip_aarch64:
                 logger.debug(
                     " - %s",
                     os.path.relpath(file_path, src_dir),

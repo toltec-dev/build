@@ -40,9 +40,11 @@ The following values are accepted:
 
 Name    | Meaning
 --------|-------------------------------------------------------------------------
-`rmall` | Packages which work on all reMarkable devices without modification.
+`rmall` | Packages which work on all reMarkable devices without modification. These packages must be cpu architecture independent, which generally means that they do not contain binaries, only scripts and configuration files.
 `rm1`   | Packages requiring reMarkable 1-specific resources or compilation flags.
 `rm2`   | Packages requiring reMarkable 2-specific resources or compilation flags.
+`rmpp`  | Packages requiring reMarkable Paper Pro-specific resources or compilation flags.
+`rmppm` | Packages requiring reMarkable Paper Pro Move-specific resources or compilation flags.
 
 For example, use `archs=(rm1)` for a package that only works on reMarkable 1, or `archs=(rm1 rm2)` for a package that works both on reMarkable 1 and reMarkable 2 but needs different dependencies or compilation flags for each of those.
 

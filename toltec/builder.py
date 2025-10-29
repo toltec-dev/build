@@ -274,6 +274,7 @@ source file '{source.url}', got {req.status_code}"
         )
         bash.pipe_logs(logger, logs, "prepare()")
 
+    # pylint: disable=too-many-locals
     def _build(self, recipe: Recipe, src_dir: str) -> None:
         """Build artifacts for a recipe."""
         if not recipe.build:
@@ -316,13 +317,31 @@ source file '{source.url}', got {req.status_code}"
             )
 
         if host_deps:
-            opkg_conf_path = "$SYSROOT/etc/opkg/opkg.conf"
+            opkg_conf_path = (
+                "$SYSROOT_AARCH64/etc/opkg/opkg.conf"
+                if recipe.arch.startswith("rmpp")
+                else "$SYSROOT/etc/opkg/opkg.conf"
+            )
+            opkg_exec = (
+                "opkg-aarch64" if recipe.arch.startswith("rmpp") else "opkg"
+            )
+            opkg_arch = (
+                "aarch64-3.10"
+                if recipe.arch.startswith("rmpp")
+                else "armv7-3.2"
+            )
+            opkg_src = (
+                "aarch64-k3.10"
+                if recipe.arch.startswith("rmpp")
+                else "armv7sf-k3.2"
+            )
+
             pre_script.extend(
                 (
                     'echo -n "dest root /',
                     "arch all 100",
-                    "arch armv7-3.2 160",
-                    "src/gz entware https://bin.entware.net/armv7sf-k3.2",
+                    f"arch {opkg_arch} 160",
+                    f"src/gz entware https://bin.entware.net/{opkg_src}",
                     "arch rmall 200",
                     "src/gz toltec-rmall file:///repo/rmall",
                     f'" > "{opkg_conf_path}"',
@@ -340,11 +359,14 @@ source file '{source.url}', got {req.status_code}"
 
             pre_script.extend(
                 (
-                    "opkg update --verbosity=0",
-                    "opkg install --verbosity=0 --no-install-recommends"
+                    f"{opkg_exec} update --verbosity=0",
+                    f"{opkg_exec} install --verbosity=0 --no-install-recommends"
                     " -- " + " ".join(host_deps),
                 )
             )
+
+        if recipe.arch.startswith("rmpp"):
+            pre_script.append(("source /opt/x-tools/switch-aarch64.sh"))
 
         logs = bash.run_script_in_container(
             self.docker,
