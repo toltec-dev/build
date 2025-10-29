@@ -112,7 +112,9 @@ permissions."
         """
 
     @util.hook
-    def post_package(self, package: Package, src_dir: str, pkg_dir: str) -> None:
+    def post_package(
+        self, package: Package, src_dir: str, pkg_dir: str
+    ) -> None:
         """
         Triggered after part of the artifacts from a build have been copied
         in place to the packaging directory.
@@ -193,7 +195,9 @@ or [k]eep it (not recommended)?",
         base_pkg_dir = os.path.join(build_dir, "pkg")
         os.makedirs(base_pkg_dir, exist_ok=True)
 
-        for package in packages if packages is not None else recipe.packages.values():
+        for package in (
+            packages if packages is not None else recipe.packages.values()
+        ):
             pkg_dir = os.path.join(base_pkg_dir, package.name)
             os.makedirs(pkg_dir, exist_ok=True)
 
@@ -223,7 +227,9 @@ or [k]eep it (not recommended)?",
 
             if self.URL_REGEX.match(source.url) is None:
                 # Get source file from the recipe’s directory
-                _ = shutil.copy2(os.path.join(recipe.path, source.url), local_path)
+                _ = shutil.copy2(
+                    os.path.join(recipe.path, source.url), local_path
+                )
             else:
                 # Fetch source file from the network
                 req = requests.get(source.url, timeout=(3.05, 300))
@@ -449,7 +455,9 @@ source file '{source.url}', got {req.status_code}"
         for filename in util.list_tree(pkg_dir):
             logger.debug(
                 " - %s",
-                os.path.normpath(os.path.join("/", os.path.relpath(filename, pkg_dir))),
+                os.path.normpath(
+                    os.path.join("/", os.path.relpath(filename, pkg_dir))
+                ),
             )
 
     @staticmethod
@@ -494,7 +502,9 @@ source file '{source.url}', got {req.status_code}"
                 )
 
         for step in ("pre", "post"):
-            if getattr(package, step + "upgrade") or getattr(package, step + "remove"):
+            if getattr(package, step + "upgrade") or getattr(
+                package, step + "remove"
+            ):
                 script = script_header
 
                 for action in ("upgrade", "remove"):
