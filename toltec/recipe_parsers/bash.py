@@ -181,6 +181,14 @@ def _parse_recipe(  # pylint: disable=too-many-locals, disable=too-many-statemen
         Dependency.parse(dep or "") for dep in makedepends_raw
     }
 
+    preparedepends_raw = _pop_field_indexed(
+        path, variables, "preparedepends", []
+    )
+    raw_vars["preparedepends"] = preparedepends_raw
+    attrs["preparedepends"] = {
+        Dependency.parse(dep or "") for dep in preparedepends_raw
+    }
+
     attrs["maintainer"] = raw_vars["maintainer"] = _pop_field_string(
         path, variables, "maintainer"
     )

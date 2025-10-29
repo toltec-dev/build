@@ -80,6 +80,7 @@ package() {
             },
         )
         self.assertEqual(recipe.makedepends, set())
+        self.assertEqual(recipe.preparedepends, set())
         self.assertEqual(recipe.maintainer, "None <none@example.org>")
         self.assertEqual(recipe.image, "base:v2.1")
         self.assertEqual(recipe.arch, "rmall")
@@ -94,6 +95,7 @@ declare -a source=([0]=https://example.org/toltec/basic-recipe/release-42.0.zip)
 declare -a sha256sums=([0]=SKIP)
 declare -a noextract=()
 declare -a makedepends=()
+declare -a preparedepends=()
 declare -- maintainer='None <none@example.org>'
 declare -- image=base:v2.1
 declare -- arch=rmall
@@ -136,6 +138,7 @@ declare -a source=([0]=https://example.org/toltec/basic-recipe/release-42.0.zip)
 declare -a sha256sums=([0]=SKIP)
 declare -a noextract=()
 declare -a makedepends=()
+declare -a preparedepends=()
 declare -- maintainer='None <none@example.org>'
 declare -- image=base:v2.1
 declare -- arch=rmall
@@ -383,6 +386,7 @@ pkg3() {
 
         self.assertEqual(recipe.path, rec_path)
         self.assertEqual(recipe.makedepends, set())
+        self.assertEqual(recipe.preparedepends, set())
         self.assertEqual(recipe.maintainer, "None <none@example.org>")
         self.assertEqual(recipe.image, "base:v2.1")
         self.assertEqual(recipe.arch, "rmall")
@@ -396,6 +400,7 @@ declare -a source=([0]=https://example.org/toltec/pkg/release-4.3.2.zip)
 declare -a sha256sums=([0]=SKIP)
 declare -a noextract=()
 declare -a makedepends=()
+declare -a preparedepends=()
 declare -- maintainer='None <none@example.org>'
 declare -- image=base:v2.1
 declare -- arch=rmall
@@ -417,6 +422,7 @@ declare -a source=([0]=https://example.org/toltec/pkg/release-4.3.2.zip)
 declare -a sha256sums=([0]=SKIP)
 declare -a noextract=()
 declare -a makedepends=()
+declare -a preparedepends=()
 declare -- maintainer='None <none@example.org>'
 declare -- image=base:v2.1
 declare -- arch=rmall
@@ -457,6 +463,7 @@ declare -a source=([0]=https://example.org/toltec/pkg/release-4.3.2.zip)
 declare -a sha256sums=([0]=SKIP)
 declare -a noextract=()
 declare -a makedepends=()
+declare -a preparedepends=()
 declare -- maintainer='None <none@example.org>'
 declare -- image=base:v2.1
 declare -- arch=rmall
@@ -505,6 +512,7 @@ declare -a source=([0]=https://example.org/toltec/pkg/release-4.3.2.zip)
 declare -a sha256sums=([0]=SKIP)
 declare -a noextract=()
 declare -a makedepends=()
+declare -a preparedepends=()
 declare -- maintainer='None <none@example.org>'
 declare -- image=base:v2.1
 declare -- arch=rmall
@@ -554,6 +562,7 @@ declare -a source=([0]=https://example.org/toltec/pkg/release-4.3.2.zip)
 declare -a sha256sums=([0]=SKIP)
 declare -a noextract=()
 declare -a makedepends=()
+declare -a preparedepends=()
 declare -- maintainer='None <none@example.org>'
 declare -- image=base:v2.1
 declare -- arch=rmall
@@ -664,6 +673,7 @@ declare -a source=()
 declare -a sha256sums=()
 declare -a noextract=()
 declare -a makedepends=()
+declare -a preparedepends=()
 declare -- maintainer='Mattéo Delabre <spam@delab.re>'
 declare -- image=qt:v1.1
 declare -- arch=rm1
@@ -718,6 +728,7 @@ declare -a source=()
 declare -a sha256sums=()
 declare -a noextract=()
 declare -a makedepends=()
+declare -a preparedepends=()
 declare -- maintainer='Mattéo Delabre <spam@delab.re>'
 declare -- image=qt:v1.1
 declare -- arch=rm1
@@ -753,6 +764,7 @@ declare -a source=()
 declare -a sha256sums=()
 declare -a noextract=()
 declare -a makedepends=()
+declare -a preparedepends=()
 declare -- maintainer='Mattéo Delabre <spam@delab.re>'
 declare -- image=qt:v1.1
 declare -- arch=rm1
@@ -810,6 +822,7 @@ declare -a source=()
 declare -a sha256sums=()
 declare -a noextract=()
 declare -a makedepends=()
+declare -a preparedepends=()
 declare -- maintainer='Mattéo Delabre <spam@delab.re>'
 declare -- image=qt:v1.1
 declare -- arch=rm1
@@ -845,6 +858,7 @@ declare -a source=()
 declare -a sha256sums=()
 declare -a noextract=()
 declare -a makedepends=()
+declare -a preparedepends=()
 declare -- maintainer='Mattéo Delabre <spam@delab.re>'
 declare -- image=qt:v1.1
 declare -- arch=rm1
@@ -883,6 +897,7 @@ _configure() {
         )
         self.assertEqual(rm2.sources, set())
         self.assertEqual(rm2.makedepends, set())
+        self.assertEqual(rm2.preparedepends, set())
         self.assertEqual(rm2.maintainer, "None <none@example.com>")
         self.assertEqual(rm2.image, "qt:v1.3")
         self.assertEqual(rm2.arch, "rm2")
@@ -897,6 +912,7 @@ declare -a source=()
 declare -a sha256sums=()
 declare -a noextract=()
 declare -a makedepends=()
+declare -a preparedepends=()
 declare -- maintainer='None <none@example.com>'
 declare -- image=qt:v1.3
 declare -- arch=rm2
@@ -954,6 +970,7 @@ declare -a source=()
 declare -a sha256sums=()
 declare -a noextract=()
 declare -a makedepends=()
+declare -a preparedepends=()
 declare -- maintainer='None <none@example.com>'
 declare -- image=qt:v1.3
 declare -- arch=rm2
@@ -989,6 +1006,7 @@ declare -a source=()
 declare -a sha256sums=()
 declare -a noextract=()
 declare -a makedepends=()
+declare -a preparedepends=()
 declare -- maintainer='None <none@example.com>'
 declare -- image=qt:v1.3
 declare -- arch=rm2
@@ -1049,6 +1067,7 @@ declare -a source=()
 declare -a sha256sums=()
 declare -a noextract=()
 declare -a makedepends=()
+declare -a preparedepends=()
 declare -- maintainer='None <none@example.com>'
 declare -- image=qt:v1.3
 declare -- arch=rm2
@@ -1084,6 +1103,7 @@ declare -a source=()
 declare -a sha256sums=()
 declare -a noextract=()
 declare -a makedepends=()
+declare -a preparedepends=()
 declare -- maintainer='None <none@example.com>'
 declare -- image=qt:v1.3
 declare -- arch=rm2

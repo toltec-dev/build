@@ -69,6 +69,9 @@ class Recipe:  # pylint: disable=too-many-instance-attributes
     # Set of packages that are needed to build this recipe
     makedepends: set[Dependency]
 
+    # Set of packages that are needed to prepare this recipe
+    preparedepends: set[Dependency]
+
     # Full name and email address of this recipe’s maintainer
     maintainer: str
 

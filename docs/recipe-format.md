@@ -209,6 +209,29 @@ For example, `build:autotools` and `libvncserver>=0.9.13` are valid dependency s
 
 **Dependencies declared in the `makedepends` field are only satisfied during the build process, not at install time** — see the [`installdepends`](#installdepends-field) below for declaring install-time dependencies.
 
+#### `preparedepends` field
+
+<table>
+    <tr>
+        <th>Required?</th>
+        <td>No, defaults to <code>()</code></th>
+    </tr>
+    <tr>
+        <th>Type</th>
+        <td>Array of dependency specifications (strings)</td>
+    </tr>
+</table>
+
+The list of Debian, Toltec or Entware packages that are needed to prepare this package.
+Dependency specifications have the following format: `[host:|build:]package-name`.
+For example, `build:autotools` and `libvncserver>=0.9.13` are valid dependency specifications.
+
+*Build-type dependencies* (prefixed with `build:`) are packages from Debian to install in the container’s root system before the recipe’s build script is executed.
+
+*Host-type dependencies* (prefixed with `host:`) are packages from Toltec or Entware to install in the container’s `$SYSROOT` before the recipe’s build script is executed. The packages are offline-installed (i.e., none of their [install scripts](#install-section) are executed).
+
+**Dependencies declared in the `preparedepends` field are only satisfied during the prepare process, not at install time** — see the [`installdepends`](#installdepends-field) below for declaring install-time dependencies.
+
 #### `pkgnames` field
 
 <table>
