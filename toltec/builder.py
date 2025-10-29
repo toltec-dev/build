@@ -376,7 +376,6 @@ source file '{source.url}', got {req.status_code}"
                 recipe.prepare,
                 f"chown -R {uid}:{gid} {mount_src}",
             ],
-            image=recipe.image,
             arch=recipe.arch,
             dependencies=recipe.preparedepends,
             mounts=[
@@ -418,6 +417,7 @@ source file '{source.url}', got {req.status_code}"
                 recipe.build,
                 f"chown -R {uid}:{gid} {mount_src} {repo_src}",
             ],
+            image=recipe.image,
             arch=recipe.arch,
             dependencies=recipe.makedepends,
             mounts=[
