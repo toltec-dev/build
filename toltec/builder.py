@@ -15,7 +15,7 @@ import requests
 from . import hooks
 from . import bash, util, ipk
 from .recipe import RecipeBundle, Recipe, Package
-from .version import DependencyKind
+from .version import Dependency, DependencyKind
 
 logger = logging.getLogger(__name__)
 
@@ -112,9 +112,7 @@ permissions."
         """
 
     @util.hook
-    def post_package(
-        self, package: Package, src_dir: str, pkg_dir: str
-    ) -> None:
+    def post_package(self, package: Package, src_dir: str, pkg_dir: str) -> None:
         """
         Triggered after part of the artifacts from a build have been copied
         in place to the packaging directory.
@@ -195,9 +193,7 @@ or [k]eep it (not recommended)?",
         base_pkg_dir = os.path.join(build_dir, "pkg")
         os.makedirs(base_pkg_dir, exist_ok=True)
 
-        for package in (
-            packages if packages is not None else recipe.packages.values()
-        ):
+        for package in packages if packages is not None else recipe.packages.values():
             pkg_dir = os.path.join(base_pkg_dir, package.name)
             os.makedirs(pkg_dir, exist_ok=True)
 
@@ -227,9 +223,7 @@ or [k]eep it (not recommended)?",
 
             if self.URL_REGEX.match(source.url) is None:
                 # Get source file from the recipe’s directory
-                _ = shutil.copy2(
-                    os.path.join(recipe.path, source.url), local_path
-                )
+                _ = shutil.copy2(os.path.join(recipe.path, source.url), local_path)
             else:
                 # Fetch source file from the network
                 req = requests.get(source.url, timeout=(3.05, 300))
@@ -261,6 +255,105 @@ source file '{source.url}', got {req.status_code}"
                         local_path,
                     )
 
+    def _run_script(  # pylint: disable=R0913, R0917, R0914
+        self,
+        script: list[str],
+        arch: str = "rmall",
+        image: str = "toolchain:v4.0",
+        dependencies: set[Dependency] | None = None,
+        mounts: list[docker.types.Mount] | None = None,
+        variables: bash.Variables | None = None,
+    ) -> bash.LogGenerator:
+        """Run a recipe script in a container"""
+        pre_script: list[str] = []
+
+        # Install required dependencies
+        build_deps: list[str] = []
+        host_deps: list[str] = []
+
+        if dependencies is not None:
+            for dep in dependencies:
+                if dep.kind == DependencyKind.BUILD:
+                    build_deps.append(dep.package)
+                elif dep.kind == DependencyKind.HOST:
+                    host_deps.append(dep.package)
+
+        if build_deps:
+            pre_script.extend(
+                (
+                    "export DEBIAN_FRONTEND=noninteractive",
+                    "apt-get update -qq",
+                    "apt-get install -qq --no-install-recommends"
+                    + ' -o Dpkg::Options::="--force-confdef"'
+                    + ' -o Dpkg::Options::="--force-confold"'
+                    + " -- "
+                    + " ".join(build_deps),
+                )
+            )
+
+        is_aarch64 = arch.startswith("rmpp")
+        if host_deps:
+            opkg_conf_path = (
+                "$SYSROOT_AARCH64/etc/opkg/opkg.conf"
+                if is_aarch64
+                else "$SYSROOT/etc/opkg/opkg.conf"
+            )
+            opkg_exec = "opkg-aarch64" if is_aarch64 else "opkg"
+            opkg_arch = "aarch64-3.10" if is_aarch64 else "armv7-3.2"
+            opkg_src = "aarch64-k3.10" if is_aarch64 else "armv7sf-k3.2"
+
+            pre_script.extend(
+                (
+                    'echo -n "dest root /',
+                    "arch all 100",
+                    f"arch {opkg_arch} 160",
+                    f"src/gz entware https://bin.entware.net/{opkg_src}",
+                    "arch rmall 200",
+                    "src/gz toltec-rmall file:///repo/rmall",
+                    f'" > "{opkg_conf_path}"',
+                )
+            )
+
+            if arch != "rmall":
+                pre_script.extend(
+                    (
+                        f'echo -n "arch {arch} 250',
+                        f"src/gz toltec-{arch} file:///repo/{arch}",
+                        f'" >> "{opkg_conf_path}"',
+                    )
+                )
+
+            pre_script.extend(
+                (
+                    f"{opkg_exec} update --verbosity=0",
+                    f"{opkg_exec} install --verbosity=0 --no-install-recommends"
+                    + " -- "
+                    + " ".join(host_deps),
+                )
+            )
+
+        if is_aarch64:
+            pre_script.append(
+                (
+                    "if [ -f /opt/x-tools/switch-aarch64.sh ]; then"
+                    + "source /opt/x-tools/switch-aarch64.sh;"
+                    + "fi"
+                )
+            )
+
+        return bash.run_script_in_container(
+            self.docker,
+            image=self.IMAGE_PREFIX + image,
+            mounts=mounts or [],
+            variables=variables or {},
+            script="\n".join(
+                [
+                    *pre_script,
+                    *script,
+                ]
+            ),
+        )
+
     def _prepare(self, recipe: Recipe, src_dir: str) -> None:
         """Prepare source files before building."""
         if not recipe.prepare:
@@ -271,9 +364,15 @@ source file '{source.url}', got {req.status_code}"
         mount_src = "/src"
         uid = os.getuid()
         gid = os.getgid()
-        logs = bash.run_script_in_container(
-            self.docker,
-            image=self.IMAGE_PREFIX + "toolchain:v4.0",
+        logs = self._run_script(
+            [
+                f'cd "{mount_src}"',
+                recipe.prepare,
+                f"chown -R {uid}:{gid} {mount_src}",
+            ],
+            image=recipe.image,
+            arch=recipe.arch,
+            dependencies=recipe.preparedepends,
             mounts=[
                 docker.types.Mount(
                     type="bind",
@@ -284,13 +383,6 @@ source file '{source.url}', got {req.status_code}"
             variables={
                 "srcdir": mount_src,
             },
-            script="\n".join(
-                [
-                    f'cd "{mount_src}"',
-                    recipe.prepare,
-                    f"chown -R {uid}:{gid} {mount_src}",
-                ]
-            ),
         )
         bash.pipe_logs(logger, logs, "prepare()")
 
@@ -313,87 +405,15 @@ source file '{source.url}', got {req.status_code}"
         repo_src = "/repo"
         uid = os.getuid()
         gid = os.getgid()
-        pre_script: list[str] = []
 
-        # Install required dependencies
-        build_deps: list[str] = []
-        host_deps: list[str] = []
-
-        for dep in recipe.makedepends:
-            if dep.kind == DependencyKind.BUILD:
-                build_deps.append(dep.package)
-            elif dep.kind == DependencyKind.HOST:
-                host_deps.append(dep.package)
-
-        if build_deps:
-            pre_script.extend(
-                (
-                    "export DEBIAN_FRONTEND=noninteractive",
-                    "apt-get update -qq",
-                    "apt-get install -qq --no-install-recommends"
-                    + ' -o Dpkg::Options::="--force-confdef"'
-                    + ' -o Dpkg::Options::="--force-confold"'
-                    + " -- "
-                    + " ".join(build_deps),
-                )
-            )
-
-        if host_deps:
-            opkg_conf_path = (
-                "$SYSROOT_AARCH64/etc/opkg/opkg.conf"
-                if recipe.arch.startswith("rmpp")
-                else "$SYSROOT/etc/opkg/opkg.conf"
-            )
-            opkg_exec = (
-                "opkg-aarch64" if recipe.arch.startswith("rmpp") else "opkg"
-            )
-            opkg_arch = (
-                "aarch64-3.10"
-                if recipe.arch.startswith("rmpp")
-                else "armv7-3.2"
-            )
-            opkg_src = (
-                "aarch64-k3.10"
-                if recipe.arch.startswith("rmpp")
-                else "armv7sf-k3.2"
-            )
-
-            pre_script.extend(
-                (
-                    'echo -n "dest root /',
-                    "arch all 100",
-                    f"arch {opkg_arch} 160",
-                    f"src/gz entware https://bin.entware.net/{opkg_src}",
-                    "arch rmall 200",
-                    "src/gz toltec-rmall file:///repo/rmall",
-                    f'" > "{opkg_conf_path}"',
-                )
-            )
-
-            if recipe.arch != "rmall":
-                pre_script.extend(
-                    (
-                        f'echo -n "arch {recipe.arch} 250',
-                        f"src/gz toltec-{recipe.arch} file:///repo/{recipe.arch}",
-                        f'" >> "{opkg_conf_path}"',
-                    )
-                )
-
-            pre_script.extend(
-                (
-                    f"{opkg_exec} update --verbosity=0",
-                    f"{opkg_exec} install --verbosity=0 --no-install-recommends"
-                    + " -- "
-                    + " ".join(host_deps),
-                )
-            )
-
-        if recipe.arch.startswith("rmpp"):
-            pre_script.append(("source /opt/x-tools/switch-aarch64.sh"))
-
-        logs = bash.run_script_in_container(
-            self.docker,
-            image=self.IMAGE_PREFIX + recipe.image,
+        logs = self._run_script(
+            [
+                f'cd "{mount_src}"',
+                recipe.build,
+                f"chown -R {uid}:{gid} {mount_src} {repo_src}",
+            ],
+            arch=recipe.arch,
+            dependencies=recipe.makedepends,
             mounts=[
                 docker.types.Mount(
                     type="bind",
@@ -409,14 +429,6 @@ source file '{source.url}', got {req.status_code}"
             variables={
                 "srcdir": mount_src,
             },
-            script="\n".join(
-                (
-                    *pre_script,
-                    f'cd "{mount_src}"',
-                    recipe.build,
-                    f"chown -R {uid}:{gid} {mount_src} {repo_src}",
-                )
-            ),
         )
         bash.pipe_logs(logger, logs, "build()")
 
@@ -437,9 +449,7 @@ source file '{source.url}', got {req.status_code}"
         for filename in util.list_tree(pkg_dir):
             logger.debug(
                 " - %s",
-                os.path.normpath(
-                    os.path.join("/", os.path.relpath(filename, pkg_dir))
-                ),
+                os.path.normpath(os.path.join("/", os.path.relpath(filename, pkg_dir))),
             )
 
     @staticmethod
@@ -484,9 +494,7 @@ source file '{source.url}', got {req.status_code}"
                 )
 
         for step in ("pre", "post"):
-            if getattr(package, step + "upgrade") or getattr(
-                package, step + "remove"
-            ):
+            if getattr(package, step + "upgrade") or getattr(package, step + "remove"):
                 script = script_header
 
                 for action in ("upgrade", "remove"):
