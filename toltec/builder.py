@@ -339,11 +339,11 @@ source file '{source.url}', got {req.status_code}"
             )
 
         if is_aarch64:
-            pre_script.append(
+            pre_script.extend(
                 (
-                    "if [ -f /opt/x-tools/switch-aarch64.sh ]; then"
-                    + "source /opt/x-tools/switch-aarch64.sh;"
-                    + "fi"
+                    "if [ -f /opt/x-tools/switch-aarch64.sh ]; then",
+                    "  source /opt/x-tools/switch-aarch64.sh",
+                    "fi",
                 )
             )
 
