@@ -24,8 +24,10 @@ sha256sums=(
     SKIP
     SKIP
 )
+preparedepends=(build:rsync)
 
 prepare() {
+    rsync --help > /dev/null
     patch -p1 -d"$srcdir" < "$srcdir"/patch-remux-duplicate-xochitl.diff
     patch -p1 -d"$srcdir" < "$srcdir"/patch-remux-start-xochitl.diff
     rm "$srcdir"/*.diff
