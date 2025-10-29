@@ -13,7 +13,7 @@ taken from Debian’s. See:
 import re
 from functools import total_ordering
 from enum import Enum
-from typing import Optional, Callable
+from typing import Callable
 
 # Characters permitted in the upstream part of a version number
 _UPSTREAM_CHARS = "A-Za-z0-9.+~-"
@@ -142,8 +142,7 @@ class Version:
 
         if epoch < 0:
             raise InvalidVersionError(
-                f"Invalid epoch '{epoch}', only non-negative values "
-                "are allowed"
+                f"Invalid epoch '{epoch}', only non-negative values are allowed"
             )
 
         if not upstream:
@@ -164,7 +163,7 @@ class Version:
                 f"are {_REVISION_CHARS}"
             )
 
-        self._original: Optional[str] = None
+        self._original: str | None = None
 
     @staticmethod
     def parse(version: str) -> "Version":
@@ -278,14 +277,14 @@ class Dependency:
         kind: DependencyKind,
         package: str,
         version_comparator: VersionComparator = VersionComparator.EQUAL,
-        version: Optional[Version] = None,
+        version: Version | None = None,
     ):
         self.kind = kind
         self.package = package
         self.version_comparator = version_comparator
         self.version = version
 
-        self._original: Optional[str] = None
+        self._original: str | None = None
 
     @staticmethod
     def parse(dependency: str) -> "Dependency":

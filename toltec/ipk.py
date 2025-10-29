@@ -3,7 +3,7 @@
 """Read and write ipk packages."""
 
 from gzip import GzipFile
-from typing import Dict, IO, Optional, Type, Union
+from typing import IO
 from types import TracebackType
 from io import BytesIO
 import tarfile
@@ -35,7 +35,7 @@ def _targz_open(fileobj: IO[bytes], epoch: int) -> tarfile.TarFile:
 
 
 def _clean_info(
-    root: Optional[str], epoch: int, info: tarfile.TarInfo
+    root: str | None, epoch: int, info: tarfile.TarInfo
 ) -> tarfile.TarInfo:
     """
     Remove variable data from an archive entry.
@@ -81,7 +81,7 @@ def _add_file(
 
 
 def write_control(
-    file: IO[bytes], epoch: int, metadata: str, scripts: Dict[str, str]
+    file: IO[bytes], epoch: int, metadata: str, scripts: dict[str, str]
 ) -> None:
     """
     Create the control sub-archive of an ipk package.
@@ -109,7 +109,7 @@ def write_control(
 def write_data(
     file: IO[bytes],
     epoch: int,
-    pkg_dir: Optional[str] = None,
+    pkg_dir: str | None = None,
 ) -> None:
     """
     Create the data sub-archive of an ipk package.
@@ -130,8 +130,8 @@ def write(
     file: IO[bytes],
     epoch: int,
     metadata: str,
-    scripts: Dict[str, str],
-    pkg_dir: Optional[str] = None,
+    scripts: dict[str, str],
+    pkg_dir: str | None = None,
 ) -> None:
     """
     Create an ipk package.
@@ -164,14 +164,14 @@ def write(
 class Reader:
     """Read from ipk packages."""
 
-    def __init__(self, file: Union[str, IO[bytes]]):
+    def __init__(self, file: str | IO[bytes]):
         """
         Create a package reader.
         :param file: path to the package file to read, or opened
             file object for a package file (in the second case, the
             package file object will not by closed on exit)
         """
-        self._file: Optional[IO[bytes]] = None
+        self._file: IO[bytes] | None = None
 
         if isinstance(file, str):
             self._file = open(file, "rb")  # pylint:disable=consider-using-with
@@ -180,12 +180,12 @@ class Reader:
             self._file = file
             self._close = False
 
-        self._root_archive: Optional[tarfile.TarFile] = None
-        self._data_file: Optional[IO[bytes]] = None
+        self._root_archive: tarfile.TarFile | None = None
+        self._data_file: IO[bytes] | None = None
 
-        self.data: Optional[tarfile.TarFile] = None
-        self.metadata: Optional[str] = None
-        self.scripts: Dict[str, str] = {}
+        self.data: tarfile.TarFile | None = None
+        self.metadata: str | None = None
+        self.scripts: dict[str, str] = {}
 
     def __enter__(self) -> "Reader":
         """Load package data to memory."""
@@ -216,9 +216,9 @@ class Reader:
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_inst: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_inst: BaseException | None,
+        traceback: TracebackType | None,
     ) -> None:
         """Free resources containing package data."""
         if self.data is not None:

@@ -6,7 +6,6 @@ import argparse
 import os
 import sys
 from importlib.util import find_spec, spec_from_file_location, module_from_spec
-from typing import Dict, List, Optional
 from toltec import parse_recipe
 from toltec.builder import Builder
 from toltec.recipe import Package
@@ -97,7 +96,7 @@ def main() -> int:  # pylint:disable=too-many-branches
                         f"Hook module '{ident}' couldn’t be loaded"
                     )
 
-        build_matrix: Optional[Dict[str, Optional[List[Package]]]] = None
+        build_matrix: dict[str, list[Package] | None] | None = None
 
         if args.arch_name or args.package_name:
             build_matrix = {}

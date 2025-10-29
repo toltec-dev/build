@@ -10,7 +10,7 @@ packages (in the latter case, it is called a split package).
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, List, NamedTuple, Set
+from typing import NamedTuple
 import os
 import textwrap
 from .version import Version, Dependency
@@ -37,7 +37,7 @@ class RecipeWarning(Warning):
 
 
 # Set of variations of the same recipes that target different architectures
-RecipeBundle = Dict[str, "Recipe"]
+RecipeBundle = dict[str, "Recipe"]
 
 
 class Source(NamedTuple):
@@ -64,10 +64,10 @@ class Recipe:  # pylint: disable=too-many-instance-attributes
     timestamp: datetime
 
     # Set of source items to be downloaded
-    sources: Set[Source]
+    sources: set[Source]
 
     # Set of packages that are needed to build this recipe
-    makedepends: Set[Dependency]
+    makedepends: set[Dependency]
 
     # Full name and email address of this recipe’s maintainer
     maintainer: str
@@ -79,7 +79,7 @@ class Recipe:  # pylint: disable=too-many-instance-attributes
     arch: str
 
     # Set of flags to be used by the build system
-    flags: List[str]
+    flags: list[str]
 
     # Bash script for preparing (patching, moving) source files before build
     prepare: str
@@ -88,7 +88,7 @@ class Recipe:  # pylint: disable=too-many-instance-attributes
     build: str
 
     # Set of packages to generate from the build artifacts
-    packages: Dict[str, "Package"]
+    packages: dict[str, "Package"]
 
 
 @dataclass
@@ -117,22 +117,22 @@ class Package:  # pylint: disable=too-many-instance-attributes
     license: str
 
     # Set of packages that must be installed for this package to work
-    installdepends: Set[Dependency]
+    installdepends: set[Dependency]
 
     # Set of packages that this package recommends installing
-    recommends: Set[Dependency]
+    recommends: set[Dependency]
 
     # Set of packages that provide additional features for this package
-    optdepends: Set[Dependency]
+    optdepends: set[Dependency]
 
     # Set of incompatible packages
-    conflicts: Set[Dependency]
+    conflicts: set[Dependency]
 
     # Set of packages replaced by this package
-    replaces: Set[Dependency]
+    replaces: set[Dependency]
 
     # Set of packages that this package provides
-    provides: Set[Dependency]
+    provides: set[Dependency]
 
     # Bash script for packaging build artifacts
     package: str

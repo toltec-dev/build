@@ -16,7 +16,12 @@ from elftools.elf.elffile import ELFFile
 from toltec.builder import Builder
 from toltec.recipe import Recipe
 from toltec.util import listener
-from toltec.hooks.strip import walk_elfs, run_in_container, MOUNT_SRC
+from toltec.hooks.strip import (
+    walk_elfs,
+    restore_mtime_script,
+    run_in_container,
+    MOUNT_SRC,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -68,15 +73,14 @@ def register(builder: Builder) -> None:
             )
 
         for file_path in binaries:
-            original_mtime[file_path] = os.stat(file_path).st_mtime_ns
+            original_mtime[docker_file_path(file_path)] = os.stat(
+                file_path
+            ).st_mtime_ns
 
         script.append(
             "patchelf --add-needed librm2fb_client.so.1 "
             + " ".join(docker_file_path(file_path) for file_path in binaries)
         )
 
+        script += restore_mtime_script(original_mtime)
         run_in_container(builder, src_dir, logger, script)
-
-        # Restore original mtimes
-        for file_path, mtime in original_mtime.items():
-            os.utime(file_path, ns=(mtime, mtime))

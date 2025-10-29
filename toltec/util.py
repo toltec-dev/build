@@ -15,13 +15,8 @@ from typing import (
     Any,
     Callable,
     cast,
-    Dict,
     IO,
-    List,
-    Optional,
     Protocol,
-    Type,
-    Union,
 )
 import warnings
 import zipfile
@@ -65,11 +60,11 @@ def setup_logging(args: argparse.Namespace) -> None:
         logging.basicConfig(format=LOGGING_FORMAT, level=args.verbose)
 
     def formatwarning(
-        message: Union[str, Warning],
-        category: Type[Warning],
+        message: str | Warning,
+        category: type[Warning],
         filename: str,
         lineno: int,
-        line: Optional[str] = None,
+        line: str | None = None,
     ) -> str:
         del filename, lineno, line
         return f"[{category.__name__}] {message}"
@@ -94,7 +89,7 @@ def file_sha256(path: str) -> str:
     return sha256.hexdigest()
 
 
-def split_all_parts(path: str) -> List[str]:
+def split_all_parts(path: str) -> list[str]:
     """Split a file path into all its directory components."""
     parts = []
     prefix = path
@@ -108,7 +103,7 @@ def split_all_parts(path: str) -> List[str]:
     return parts
 
 
-def split_all_exts(path: str) -> List[str]:
+def split_all_exts(path: str) -> list[str]:
     """Get the list of extensions in a file path."""
     exts = []
     remaining = path
@@ -131,7 +126,7 @@ def all_equal(seq: Iterable) -> bool:
     return first and not second
 
 
-def remove_prefix(filenames: List[str]) -> Dict[str, str]:
+def remove_prefix(filenames: list[str]) -> dict[str, str]:
     """Find and remove the longest directory prefix shared by all files."""
     split_filenames = [split_all_parts(filename) for filename in filenames]
 
@@ -204,9 +199,9 @@ def auto_extract(archive_path: str, dest_path: str) -> bool:
 
 
 def _auto_extract(  # pylint:disable=too-many-arguments,disable=too-many-locals,disable=too-many-positional-arguments
-    members: List[str],
+    members: list[str],
     getinfo: Callable[[str], Any],
-    extract: Callable[[Any], Optional[IO[bytes]]],
+    extract: Callable[[Any], IO[bytes] | None],
     isdir: Callable[[Any], bool],
     issym: Callable[[Any], bool],
     getmode: Callable[[Any], int],
@@ -253,8 +248,8 @@ def _auto_extract(  # pylint:disable=too-many-arguments,disable=too-many-locals,
 def query_user(
     question: str,
     default: str,
-    options: Optional[List[str]] = None,
-    aliases: Optional[Dict[str, str]] = None,
+    options: list[str] | None = None,
+    aliases: dict[str, str] | None = None,
 ) -> str:
     """
     Ask the user to make a choice.
@@ -323,7 +318,7 @@ def check_directory(path: str, message: str) -> bool:
     return True
 
 
-def list_tree(root: str) -> List[str]:
+def list_tree(root: str) -> list[str]:
     """
     Get a sorted list of all files and folders under a given root folder.
 
@@ -362,7 +357,7 @@ def hook(func: HookTrigger) -> Hook:
     :param func: empty function to declare as a hook
     :returns: usable hook
     """
-    listeners: List[HookListener] = []
+    listeners: list[HookListener] = []
 
     def register(new_listener: HookListener) -> None:
         listeners.append(new_listener)
