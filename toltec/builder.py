@@ -7,9 +7,9 @@ from collections.abc import Mapping
 from types import TracebackType
 import re
 import os
-import shlex
 import logging
 import textwrap
+from inspect import getsource
 from importlib.util import find_spec, module_from_spec
 import docker
 import requests
@@ -405,19 +405,17 @@ source file '{source.url}', got {req.status_code}"
         repo_src = "/repo"
         uid = os.getuid()
         gid = os.getgid()
-        restore_script: list[str] = []
 
         # Set fixed atime and mtime for all the source files
         epoch = int(recipe.timestamp.timestamp())
-        for file_path in util.list_tree(src_dir):
-            docker_path = shlex.quote(
-                os.path.join(mount_src, os.path.relpath(file_path, src_dir))
-            )
-            restore_script.append(
-                'echo "import os; os.utime('
-                + f'\\"{docker_path}\\", ns=({epoch}, {epoch})'
-                + ')" | python3 -u'
-            )
+        restore_script: list[str] = [
+            "python3 -u <<EOF",
+            "import os",
+            getsource(util.list_tree),
+            f'for file_path in util.list_tree("{mount_src}")',
+            f"    os.utime(file_path, ns=({epoch}, {epoch})",
+            "EOF",
+        ]
 
         logs = self._run_script(
             [
