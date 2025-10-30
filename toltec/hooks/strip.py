@@ -8,6 +8,8 @@ behavior is disabled if the recipe declares the 'nostrip' flag.
 
 import os
 import logging
+import random
+import string
 import shlex
 from typing import Callable
 import docker
@@ -60,17 +62,35 @@ def run_in_container(
     bash.pipe_logs(_logger, logs)
 
 
-def restore_mtime_script(original_mtime: dict[str, int]) -> list[str]:
+def restore_mtime_script(
+    src_dir: str, mnt_dir: str, original_mtime: dict[str, int]
+) -> list[str]:
     """Restore original mtimes for files after they have been modified"""
-    script: list[str] = []
-    for file_path, mtime in original_mtime.items():
-        script.append(
-            'echo "import os; os.utime('
-            + f'\\"{file_path}\\", ns=({mtime}, {mtime})'
-            + ')" | python3 -u'
-        )
+    if not original_mtime:
+        return []
 
-    return script
+    script: list[str] = ["import os"]
+    for file_path, mtime in original_mtime.items():
+        script.append(f'os.utime("{file_path}", ns=({mtime}, {mtime}))')
+
+    while os.path.exists(
+        (script_path := os.path.join(src_dir, f".{randomword(10)}.py"))
+    ):
+        pass
+
+    with open(script_path, "w", encoding="utf-8") as f:
+        _ = f.write("\n".join(script))
+
+    docker_path = shlex.quote(
+        os.path.join(mnt_dir, os.path.relpath(script_path, src_dir))
+    )
+    return [f"python3 -u {docker_path}", f"rm {docker_path}"]
+
+
+def randomword(length: int) -> str:
+    """Create a random string"""
+    letters = string.ascii_lowercase
+    return "".join(random.choice(letters) for i in range(length))
 
 
 def register(builder: Builder) -> None:
@@ -177,5 +197,5 @@ def register(builder: Builder) -> None:
                     os.path.relpath(file_path, src_dir),
                 )
 
-        script += restore_mtime_script(original_mtime)
+        script += restore_mtime_script(src_dir, MOUNT_SRC, original_mtime)
         run_in_container(builder, src_dir, logger, script)

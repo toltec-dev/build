@@ -82,5 +82,5 @@ def register(builder: Builder) -> None:
             + " ".join(docker_file_path(file_path) for file_path in binaries)
         )
 
-        script += restore_mtime_script(original_mtime)
+        script += restore_mtime_script(src_dir, MOUNT_SRC, original_mtime)
         run_in_container(builder, src_dir, logger, script)
