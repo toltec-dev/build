@@ -412,8 +412,8 @@ source file '{source.url}', got {req.status_code}"
             "python3 -u <<EOF",
             "import os",
             getsource(util.list_tree),
-            f'for file_path in util.list_tree("{mount_src}")',
-            f"    os.utime(file_path, ns=({epoch}, {epoch})",
+            f'for file_path in list_tree("{mount_src}"):',
+            f"    os.utime(file_path, ns=({epoch}, {epoch}))",
             "EOF",
         ]
 
