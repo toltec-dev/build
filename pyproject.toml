@@ -1,6 +1,6 @@
 [project]
 name = "toltecmk"
-version = "0.5.0"
+version = "0.5.1"
 authors = [
   { name="Mattéo Delabre", email="git.matteo@delab.re" },
   { name="Eeems", email="eeems@eeems.email" },
