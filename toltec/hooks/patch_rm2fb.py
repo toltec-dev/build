@@ -21,7 +21,6 @@ from toltec.hooks.strip import (
     restore_mtime_script,
     run_in_container,
     MOUNT_SRC,
-    randomword,
 )
 
 logger = logging.getLogger(__name__)

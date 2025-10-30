@@ -11,7 +11,6 @@ import logging
 import random
 import string
 import shlex
-import atexit
 from typing import Callable
 import docker
 from elftools.elf.elffile import ELFFile, ELFError
@@ -79,7 +78,7 @@ def restore_mtime_script(
     ):
         pass
 
-    with open(script_path, "w") as f:
+    with open(script_path, "w", encoding="utf-8") as f:
         _ = f.write("\n".join(script))
 
     docker_path = shlex.quote(
@@ -89,6 +88,7 @@ def restore_mtime_script(
 
 
 def randomword(length: int) -> str:
+    """Create a random string"""
     letters = string.ascii_lowercase
     return "".join(random.choice(letters) for i in range(length))
 
