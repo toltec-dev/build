@@ -348,6 +348,15 @@ source file '{source.url}', got {req.status_code}"
                 )
             )
 
+        elif arch.startswith("rm1") or arch.startswith("rm2"):
+            pre_script.extend(
+                (
+                    "if [ -f /opt/x-tools/switch-arm.sh ]; then",
+                    "  source /opt/x-tools/switch-arm.sh",
+                    "fi",
+                )
+            )
+
         return bash.run_script_in_container(
             self.docker,
             image=self.IMAGE_PREFIX + image,
